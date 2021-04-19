@@ -22,3 +22,4 @@ Notes:
 - You're invited to install Google Clock application for correct interaction with SWTIMER
   (as some device Clock applications don't follow Android API) 
 - The SWTIMER_A project needs PEKISLIB_A as library
+"# LCEB_A" 
