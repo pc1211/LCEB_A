@@ -572,8 +572,8 @@ public class MainActivity extends Activity {
     private void publishResults() {
         if (solCount > 0) {
             solutionTexts[0] = new SolutionText();
-            solutionTexts[0].pub = solCount + (isExact ? "" : " nearly") + " exact solution" + (solCount > 1 ? "s" : "") + " in " + minLineCount + " line" + (minLineCount > 1 ? "s" : "") + " (optimum)" + "\n";
-            solutionTexts[0].pub = solutionTexts[0].pub + "after " + opCount + " operation" + (opCount > 1 ? "s" : "") + "\n";
+            solutionTexts[0].pub = " " + solCount + (isExact ? "" : " nearly") + " exact solution" + (solCount > 1 ? "s" : "") + " in " + minLineCount + " line" + (minLineCount > 1 ? "s" : "") + " (optimum)" + "\n";
+            solutionTexts[0].pub = solutionTexts[0].pub + " after " + opCount + " operation" + (opCount > 1 ? "s" : "") + "\n";
             String s = "";
             for (int i = 0; i <= solCount; i = i + 1) {
                 s = s + solutionTexts[i].pub + "*************************" + "\n";
