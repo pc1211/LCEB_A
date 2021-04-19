@@ -25,19 +25,19 @@ import java.util.logging.Logger;
 
 import static com.example.pgyl.lceb_a.StringDBTables.getPlatesTargetTableName;
 import static com.example.pgyl.lceb_a.StringDBTables.getPlatesTargetValueIndex;
-import static com.example.pgyl.lceb_a.StringDBTables.platePattern;
+import static com.example.pgyl.lceb_a.StringDBTables.plateIDPrefix;
 import static com.example.pgyl.lceb_a.StringDBTables.plateValueRowToPlateValue;
 import static com.example.pgyl.lceb_a.StringDBTables.plateValueToPlateValueRow;
-import static com.example.pgyl.lceb_a.StringDBTables.targetPattern;
+import static com.example.pgyl.lceb_a.StringDBTables.targetIDPrefix;
 import static com.example.pgyl.lceb_a.StringDBTables.targetRowToTarget;
 import static com.example.pgyl.lceb_a.StringDBTables.targetToTargetRow;
 import static com.example.pgyl.lceb_a.StringDBUtils.createLCEBTableIfNotExists;
 import static com.example.pgyl.lceb_a.StringDBUtils.getDBPlateInitCount;
-import static com.example.pgyl.lceb_a.StringDBUtils.getDBPlateValue;
-import static com.example.pgyl.lceb_a.StringDBUtils.getDBTargetValue;
+import static com.example.pgyl.lceb_a.StringDBUtils.getDBPlateValueRow;
+import static com.example.pgyl.lceb_a.StringDBUtils.getDBTargetValueRow;
 import static com.example.pgyl.lceb_a.StringDBUtils.initializeTablePlatesTarget;
-import static com.example.pgyl.lceb_a.StringDBUtils.saveDBPlateValue;
-import static com.example.pgyl.lceb_a.StringDBUtils.saveDBTargetValue;
+import static com.example.pgyl.lceb_a.StringDBUtils.saveDBPlateValueRow;
+import static com.example.pgyl.lceb_a.StringDBUtils.saveDBTargetValueRow;
 import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
 import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableName;
@@ -289,16 +289,16 @@ public class MainActivity extends Activity {
 
     private void saveDBPlateValuesAndTarget() {
         for (int i = 1; i <= plateInitCount; i = i + 1) {
-            saveDBPlateValue(stringDB, plateValueToPlateValueRow(plates[i].value, i));
+            saveDBPlateValueRow(stringDB, plateValueToPlateValueRow(plates[i].value, i));
         }
-        saveDBTargetValue(stringDB, targetToTargetRow(target));
+        saveDBTargetValueRow(stringDB, targetToTargetRow(target));
     }
 
     private void getDBPlateValuesAndTarget() {
         for (int i = 1; i <= plateInitCount; i = i + 1) {
-            plates[i].value = plateValueRowToPlateValue(getDBPlateValue(stringDB, i));
+            plates[i].value = plateValueRowToPlateValue(getDBPlateValueRow(stringDB, i));
         }
-        target = targetRowToTarget(getDBTargetValue(stringDB));
+        target = targetRowToTarget(getDBTargetValueRow(stringDB));
     }
 
     private void initArrays() {
@@ -319,31 +319,31 @@ public class MainActivity extends Activity {
     }
 
     private String getControlTextByName(String valueName) {
-        String s = "";
-        if (valueName.equals(targetPattern)) {
-            s = btnTarget.getText().toString();
+        String controlText = "";
+        if (valueName.equals(targetIDPrefix)) {
+            controlText = btnTarget.getText().toString();
         }
-        if (valueName.startsWith(platePattern)) {
-            int k = Integer.parseInt(valueName.substring(platePattern.length()));  // N° de plaque
-            s = btnPlates[k - 1].getText().toString();
+        if (valueName.startsWith(plateIDPrefix)) {
+            int numPlate = Integer.parseInt(valueName.substring(plateIDPrefix.length()));  // N° de plaque
+            controlText = btnPlates[numPlate - 1].getText().toString();
         }
-        return s;
+        return controlText;
     }
 
     private void setControlTextByName(String valueName, String value) {
         try {
-            int n = Integer.parseInt(value);  // Le nombre sélectionné
-            String t = String.valueOf(n);    // Assurer un bon format p.ex. "0005"->"5"
-            if (valueName.startsWith(platePattern)) {    // Plaque
-                int k = Integer.parseInt(valueName.substring(platePattern.length()));   // N° de plaque
-                if (!(t.equals(btnPlates[k - 1].getText().toString()))) {  // Vrai changement
-                    btnPlates[k - 1].setText(t);
+            int val = Integer.parseInt(value);    // Le nombre sélectionné
+            String sVal = String.valueOf(val);    // Assurer un bon format p.ex. "0005"->"5"
+            if (valueName.startsWith(plateIDPrefix)) {    // Plaque
+                int numPlate = Integer.parseInt(valueName.substring(plateIDPrefix.length()));   // N° de plaque
+                if (!(sVal.equals(btnPlates[numPlate - 1].getText().toString()))) {  // Vrai changement
+                    btnPlates[numPlate - 1].setText(sVal);
                     invalidateSolutionDisplay();
                 }
             }
-            if (valueName.equals(targetPattern)) {  // Cible
-                if (!(t.equals(btnTarget.getText().toString()))) {   // Vrai changement
-                    btnTarget.setText(t);
+            if (valueName.equals(targetIDPrefix)) {  // Cible
+                if (!(sVal.equals(btnTarget.getText().toString()))) {   // Vrai changement
+                    btnTarget.setText(sVal);
                     invalidateSolutionDisplay();
                 }
             }
@@ -512,15 +512,15 @@ public class MainActivity extends Activity {
             int valPlate1 = plates[lines[i].numPlate1].value;
             int valPlate2 = plates[lines[i].numPlate2].value;
             if (!lines[i].ordered) {   // Inverser les plaques
-                int k = valPlate1;
+                int temp = valPlate1;
                 valPlate1 = valPlate2;
-                valPlate2 = k;
+                valPlate2 = temp;
             }
             pubText = pubText + " " + valPlate1 + " " + lines[i].operator.TEXT() + " " + valPlate2 + " = " + plates[plateInitCount + i].value + "\n";   //  Texte publiable de la proposition de solution:
             if (valPlate1 > valPlate2) {   // Commencer par la plus petite plaque dans chaque ligne de cette proposition de solution, avant tri par ligne (Cf type TypeSolution)
-                int k = valPlate1;
+                int temp = valPlate1;
                 valPlate1 = valPlate2;
-                valPlate2 = k;
+                valPlate2 = temp;
             }
             sortTexts[i] = "$" + valPlate1 + ";" + lines[i].operator.TEXT() + ";" + valPlate2 + ";" + plates[plateInitCount + i].value;
         }
@@ -601,7 +601,7 @@ public class MainActivity extends Activity {
         btnTarget.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                onBtnTargetClick(targetPattern);
+                onBtnTargetClick(targetIDPrefix);
             }
         });
         btnNewPlates.setOnClickListener(new OnClickListener() {
@@ -627,10 +627,9 @@ public class MainActivity extends Activity {
     private void setupPlateButtons() {
         Class rid = R.id.class;
         btnPlates = new Button[plateInitCount];
-        for (int i = 1; i <= plateInitCount; i = i + 1)     // Récupération des boutons Plaque du layout XML
-        {
+        for (int i = 1; i <= plateInitCount; i = i + 1) {    // Récupération des boutons Plaque du layout XML
             try {
-                btnPlates[i - 1] = (Button) findViewById(rid.getField("BTN_PLATE" + i).getInt(rid));   //  BTN_PLATE1, BTN_PLATE2, ...
+                btnPlates[i - 1] = findViewById(rid.getField("BTN_PLATE" + i).getInt(rid));   //  BTN_PLATE1, BTN_PLATE2, ...
             } catch (NoSuchFieldException | IllegalArgumentException | SecurityException | IllegalAccessException ex) {
                 Logger.getLogger(MainActivity.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -638,7 +637,7 @@ public class MainActivity extends Activity {
             btnPlates[i - 1].setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    onBtnPlateClick(platePattern + ind);  // PLATE1, PLATE2, ...);
+                    onBtnPlateClick(plateIDPrefix + ind);  // PLATE1, PLATE2, ...);
                 }
             });
         }

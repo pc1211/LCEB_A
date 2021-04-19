@@ -8,8 +8,8 @@ import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
 import static com.example.pgyl.pekislib_a.StringDBTables.TABLE_IDS;
 
 public class StringDBTables {
-    public static String platePattern = "PLATE";     //  Pour PLATE1, PLATE2, ...
-    public static String targetPattern = "TARGET";   //  Pour TARGET
+    public static String plateIDPrefix = "PLATE";     //  Pour PLATE1, PLATE2, ...
+    public static String targetIDPrefix = "TARGET";   //  Pour TARGET
 
     enum LCEB_TABLES {   // Les tables, rattachées à leurs champs de data
         PLATES_TARGET(PlatesTargetTableDataFields.PlatesTarget.class, "Plates and Target");
@@ -79,13 +79,13 @@ public class StringDBTables {
                 {TABLE_IDS.KEYBOARD.toString(), InputButtonsActivity.KEYBOARDS.POSINT.toString()},
                 {TABLE_IDS.REGEXP.toString(), REG_EXP_POSITIVE_INTEGER},
                 {TABLE_IDS.REGEXP_ERROR_MESSAGE.toString(), REG_EXP_POSITIVE_INTEGER_ERROR_MESSAGE},
-                {platePattern + "1", "25"},
-                {platePattern + "2", "50"},
-                {platePattern + "3", "75"},
-                {platePattern + "4", "100"},
-                {platePattern + "5", "3"},
-                {platePattern + "6", "6"},
-                {targetPattern, "952"}
+                {plateIDPrefix + "1", "25"},
+                {plateIDPrefix + "2", "50"},
+                {plateIDPrefix + "3", "75"},
+                {plateIDPrefix + "4", "100"},
+                {plateIDPrefix + "5", "3"},
+                {plateIDPrefix + "6", "6"},
+                {targetIDPrefix, "952"}
         };
         return TABLE_PLATES_TARGET_INITS;
     }
@@ -109,14 +109,14 @@ public class StringDBTables {
 
     public static String[] plateValueToPlateValueRow(int plateValue, int numPlate) {
         String[] plateValueRow = new String[1 + PlatesTargetTableDataFields.PlatesTarget.values().length];  //  Champ ID + données
-        plateValueRow[TABLE_ID_INDEX] = platePattern + numPlate;
+        plateValueRow[TABLE_ID_INDEX] = plateIDPrefix + numPlate;
         plateValueRow[getPlatesTargetValueIndex()] = String.valueOf(plateValue);
         return plateValueRow;
     }
 
     public static String[] targetToTargetRow(int target) {
         String[] targetRow = new String[1 + PlatesTargetTableDataFields.PlatesTarget.values().length];   //  Champ ID + données
-        targetRow[TABLE_ID_INDEX] = targetPattern;
+        targetRow[TABLE_ID_INDEX] = targetIDPrefix;
         targetRow[getPlatesTargetValueIndex()] = String.valueOf(target);
         return targetRow;
     }

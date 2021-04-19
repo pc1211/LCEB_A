@@ -2,9 +2,9 @@ package com.example.pgyl.lceb_a;
 
 import com.example.pgyl.pekislib_a.StringDB;
 
-import static com.example.pgyl.lceb_a.StringDBTables.platePattern;
-import static com.example.pgyl.lceb_a.StringDBTables.targetPattern;
-import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
+import static com.example.pgyl.lceb_a.StringDBTables.plateIDPrefix;
+import static com.example.pgyl.lceb_a.StringDBTables.targetIDPrefix;
+import static com.example.pgyl.pekislib_a.StringDB.getIDPatternWhereCondition;
 
 public class StringDBUtils {
 
@@ -19,25 +19,29 @@ public class StringDBUtils {
 
     public static int getDBPlateInitCount(StringDB stringDB) {
         int plateCount = 0;
-        String[][] plateValueRows = stringDB.selectRows(StringDBTables.getPlatesTargetTableName(), stringDB.getFieldName(TABLE_ID_INDEX) + " LIKE '" + platePattern + "%'");
+        String[][] plateValueRows = getDBPlateValueRows(stringDB);
         if (plateValueRows != null) plateCount = plateValueRows.length;
         plateValueRows = null;
         return plateCount;
     }
 
-    public static String[] getDBPlateValue(StringDB stringDB, int numPlate) {
-        return stringDB.selectRowById(StringDBTables.getPlatesTargetTableName(), platePattern + numPlate);
+    public static String[][] getDBPlateValueRows(StringDB stringDB) {
+        return stringDB.selectRows(StringDBTables.getPlatesTargetTableName(), getIDPatternWhereCondition(plateIDPrefix + "%"));
     }
 
-    public static String[] getDBTargetValue(StringDB stringDB) {
-        return stringDB.selectRowById(StringDBTables.getPlatesTargetTableName(), targetPattern);
+    public static String[] getDBPlateValueRow(StringDB stringDB, int numPlate) {
+        return stringDB.selectRowById(StringDBTables.getPlatesTargetTableName(), plateIDPrefix + numPlate);
     }
 
-    public static void saveDBPlateValue(StringDB stringDB, String[] values) {
+    public static String[] getDBTargetValueRow(StringDB stringDB) {
+        return stringDB.selectRowById(StringDBTables.getPlatesTargetTableName(), targetIDPrefix);
+    }
+
+    public static void saveDBPlateValueRow(StringDB stringDB, String[] values) {
         stringDB.insertOrReplaceRow(StringDBTables.getPlatesTargetTableName(), values);
     }
 
-    public static void saveDBTargetValue(StringDB stringDB, String[] values) {
+    public static void saveDBTargetValueRow(StringDB stringDB, String[] values) {
         stringDB.insertOrReplaceRow(StringDBTables.getPlatesTargetTableName(), values);
     }
     //endregion
