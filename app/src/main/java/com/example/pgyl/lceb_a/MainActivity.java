@@ -221,6 +221,7 @@ public class MainActivity extends Activity {
     private void onBtnNewPlatesClick() {
         int[] plateValues = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 25, 50, 50, 75, 75, 100, 100};  // Distribution des 28 plaques disponibles au départ
 
+        invalidateSolutionDisplay();
         boolean[] reservedIndexes = new boolean[plateValues.length];
         for (int i = 1; i <= plateValues.length - 1; i = i + 1) {
             reservedIndexes[i] = false;  //  Toutes les 28 plaques sont disponibles au tirage
@@ -233,12 +234,11 @@ public class MainActivity extends Activity {
             reservedIndexes[index] = true;
             btnPlates[i - 1].setText(String.valueOf(plateValues[index]));
         }
-        invalidateSolutionsDisplay();
     }
 
     private void onBtnNewTargetClick() {
+        invalidateSolutionDisplay();
         btnTarget.setText(String.valueOf(1 + (int) (Math.random() * (999))));  // Remplissage de la cible à trouver
-        invalidateSolutionsDisplay();
     }
 
     private void onBtnFindSolutionsClick() {
@@ -251,7 +251,7 @@ public class MainActivity extends Activity {
         isEnd = false;
         isNewLine = true;
 
-        invalidateSolutionsDisplay();
+        invalidateSolutionDisplay();
         updatePlateValuesWithPlateTexts();
         updateTargetValueWithTargetText();
         while (!isEnd) {
@@ -338,13 +338,13 @@ public class MainActivity extends Activity {
                 int k = Integer.parseInt(valueName.substring(platePattern.length()));   // N° de plaque
                 if (!(t.equals(btnPlates[k - 1].getText().toString()))) {  // Vrai changement
                     btnPlates[k - 1].setText(t);
-                    invalidateSolutionsDisplay();
+                    invalidateSolutionDisplay();
                 }
             }
             if (valueName.equals(targetPattern)) {  // Cible
                 if (!(t.equals(btnTarget.getText().toString()))) {   // Vrai changement
                     btnTarget.setText(t);
-                    invalidateSolutionsDisplay();
+                    invalidateSolutionDisplay();
                 }
             }
         } catch (NumberFormatException e) {
@@ -585,7 +585,7 @@ public class MainActivity extends Activity {
         btnTarget.invalidate();
     }
 
-    private void invalidateSolutionsDisplay() {
+    private void invalidateSolutionDisplay() {
         txvSolutions.setText("");       // Vider l'affichage de toutes les lignes de toutes les solutions exactes ou approchées
         btnTarget.getBackground().clearColorFilter();
         btnTarget.invalidate();
