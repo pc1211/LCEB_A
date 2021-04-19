@@ -18,7 +18,7 @@ android {
     compileSdkVersion 28
     buildToolsVersion '29.0.2'
     defaultConfig {
-        applicationId "com.example.bonux.swtimer_a"
+        applicationId "com.example.pgyl.lceb_a"
         minSdkVersion 23
         targetSdkVersion 26
         versionCode vcStamp()
@@ -44,8 +44,8 @@ dependencies {
     implementation project(':pekislib')
     implementation files('../../PEKISLIB_A/pekislib/libs/svgAndroid2-3Jan2014.jar')
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
+    androidTestImplementation('com.android.support.test.espresso:espresso-core:3.0.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    testImplementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.13.2'
 }

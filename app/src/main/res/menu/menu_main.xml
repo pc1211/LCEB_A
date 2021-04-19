@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/BAR_MENU_ITEM_SET_CLOCK_APP_ALARM_ON_START_TIMER"
-        android:showAsAction="always"
-        android:title="Set Clock App alarm\non Start timer (ON/OFF)" />
-    <item
-        android:id="@+id/BAR_MENU_ITEM_KEEP_SCREEN"
-        android:showAsAction="always"
-        android:title="Keep screen (ON/OFF)" />
-    <item
         android:id="@+id/HELP"
         android:showAsAction="never"
         android:title="Help"></item>

@@ -1,14 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.pgyl.swtimer_a">
+    package="com.example.pgyl.lceb_a">
 
-    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <application
         android:icon="@drawable/app_icon"
-        android:label="Swtimer"
+        android:label="LCEB"
         android:theme="@style/AppTheme">
         <activity
-            android:name="com.example.pgyl.swtimer_a.MainActivity"
-            android:label="Swtimer"
+            android:name="com.example.pgyl.lceb_a.MainActivity"
+            android:label="LCEB"
             android:launchMode="singleTask"
             android:windowSoftInputMode="stateHidden">
             <intent-filter>
@@ -17,27 +16,10 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.example.pgyl.swtimer_a.CtDisplayActivity"
-            android:label="CTActivity" />
-        <activity
-            android:name="com.example.pgyl.pekislib_a.PresetsActivity"
-            android:label="InputEditListActivity" />
-        <activity
             android:name="com.example.pgyl.pekislib_a.InputButtonsActivity"
             android:label="InputButtonsActivity" />
         <activity
-            android:name="com.example.pgyl.swtimer_a.CtDisplayColorsActivity"
-            android:label="CtDisplayColorsActivity"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name="com.example.pgyl.swtimer_a.CtDisplayDotMatrixDisplayActivity"
-            android:label="CtDisplayDimensionsActivity" />
-        <activity
             android:name="com.example.pgyl.pekislib_a.HelpActivity"
             android:label="HelpActivity" />
-
-        <service
-            android:name="com.example.pgyl.pekislib_a.BeepIntentService"
-            android:exported="false" />
     </application>
 </manifest>
