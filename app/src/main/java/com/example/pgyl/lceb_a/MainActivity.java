@@ -275,9 +275,8 @@ public class MainActivity extends Activity {
             opCount = opCount + 1;
             if (isSolution(result)) {
                 SolutionText solutionText = getSolutionText();   //  Créer le texte complet de la solution proposée
-                if (isUnique(solutionText)) {          //  Les solutions précédentes sont différentes => La proposition de solution est validée
+                if (isUnique(solutionText))    //  Les solutions précédentes sont différentes => La proposition de solution est validée
                     register(solutionText);
-                }
             }
             if (numLine < (plateInitCount - 1)) {    //  Une nouvelle ligne est possible
                 numLine = numLine + 1;    //  Nouvelle ligne de résultat intermédiaire
@@ -488,8 +487,8 @@ public class MainActivity extends Activity {
         if (Math.abs(result - target) < diff) {     //  Résultat plus proche de la cible
             diff = Math.abs(result - target);
             if (diff == 0) isExact = true;          //  Solution exacte trouvée !
+            minLineCount = numLine;
             solCount = 0;                           //  Effacer toutes les solutions précédentes
-            minLineCount = 999999;
             isSolution = true;
         } else {  //  Résultat identique ou plus écarté de la cible
             if (Math.abs(result - target) == diff) {   //  Résultat identique
