@@ -8,16 +8,16 @@ import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
 import static com.example.pgyl.pekislib_a.StringDBTables.TABLE_IDS;
 
 public class StringDBTables {
-    public static String plateIDPrefix = "PLATE";     //  Pour PLATE1, PLATE2, ...
+    public static String tileIDPrefix = "TILE";     //  Pour TILE1, TILE2, ...
     public static String targetIDPrefix = "TARGET";   //  Pour TARGET
 
     enum LCEB_TABLES {   // Les tables, rattachées à leurs champs de data
-        PLATES_TARGET(PlatesTargetTableDataFields.PlatesTarget.class, "Plates and Target");
+        TILES_TARGET(TilesTargetTableDataFields.TilesTarget.class, "Tiles and Target");
 
         private int dataFieldsCount;
         private String description;
 
-        LCEB_TABLES(Class<? extends PlatesTargetTableDataFields> swTimerTableFields, String description) {
+        LCEB_TABLES(Class<? extends TilesTargetTableDataFields> swTimerTableFields, String description) {
             dataFieldsCount = swTimerTableFields.getEnumConstants().length;
             this.description = description;
         }
@@ -35,14 +35,14 @@ public class StringDBTables {
         }
     }
 
-    private interface PlatesTargetTableDataFields {  //  Les champs de data, par table
+    private interface TilesTargetTableDataFields {  //  Les champs de data, par table
 
-        enum PlatesTarget implements PlatesTargetTableDataFields {
+        enum TilesTarget implements TilesTargetTableDataFields {
             VALUE("Value");
 
             private String valueLabel;
 
-            PlatesTarget(String valueLabel) {
+            TilesTarget(String valueLabel) {
                 this.valueLabel = valueLabel;
             }
 
@@ -68,56 +68,57 @@ public class StringDBTables {
         return LCEB_TABLES.valueOf(tableName).DESCRIPTION();
     }
 
-    //region PLATES_TARGET
-    public static String getPlatesTargetTableName() {
-        return LCEB_TABLES.PLATES_TARGET.toString();
+    //region TILES_TARGET
+    public static String getTilesTargetTableName() {
+        return LCEB_TABLES.TILES_TARGET.toString();
     }
 
-    public static String[][] getPlatesTargetInits() {
-        final String[][] TABLE_PLATES_TARGET_INITS = {
-                {TABLE_IDS.LABEL.toString(), PlatesTargetTableDataFields.PlatesTarget.VALUE.LABEL()},
+    public static String[][] getTilesTargetInits() {
+        final String[][] TABLE_TILES_TARGET_INITS = {
+                {TABLE_IDS.LABEL.toString(), TilesTargetTableDataFields.TilesTarget.VALUE.LABEL()},
                 {TABLE_IDS.KEYBOARD.toString(), InputButtonsActivity.KEYBOARDS.POSINT.toString()},
                 {TABLE_IDS.REGEXP.toString(), REG_EXP_POSITIVE_INTEGER},
                 {TABLE_IDS.REGEXP_ERROR_MESSAGE.toString(), REG_EXP_POSITIVE_INTEGER_ERROR_MESSAGE},
-                {plateIDPrefix + "1", "25"},
-                {plateIDPrefix + "2", "50"},
-                {plateIDPrefix + "3", "75"},
-                {plateIDPrefix + "4", "100"},
-                {plateIDPrefix + "5", "3"},
-                {plateIDPrefix + "6", "6"},
+                {tileIDPrefix + "1", "25"},
+                {tileIDPrefix + "2", "50"},
+                {tileIDPrefix + "3", "75"},
+                {tileIDPrefix + "4", "100"},
+                {tileIDPrefix + "5", "3"},
+                {tileIDPrefix + "6", "6"},
                 {targetIDPrefix, "952"}
         };
-        return TABLE_PLATES_TARGET_INITS;
+        return TABLE_TILES_TARGET_INITS;
     }
 
-    public static int getPlatesTargetValueIndex() {
-        return PlatesTargetTableDataFields.PlatesTarget.VALUE.INDEX();
+    public static int getTilesTargetValueIndex() {
+        return TilesTargetTableDataFields.TilesTarget.VALUE.INDEX();
     }
 
-    public static int plateValueRowToPlateValue(String[] plateValueRow) {
-        int plateValue = 0;
-        if (plateValueRow != null)
-            plateValue = Integer.valueOf(plateValueRow[getPlatesTargetValueIndex()]);
-        return plateValue;
+    public static int tileValueRowToTileValue(String[] tileValueRow) {
+        int tileValue = 0;
+        if (tileValueRow != null)
+            tileValue = Integer.valueOf(tileValueRow[getTilesTargetValueIndex()]);
+        return tileValue;
     }
 
-    public static int targetRowToTarget(String[] targetRow) {
-        int target = 0;
-        if (targetRow != null) target = Integer.valueOf(targetRow[getPlatesTargetValueIndex()]);
-        return target;
+    public static int targetValueRowToTargetValue(String[] targetValueRow) {
+        int targetValue = 0;
+        if (targetValueRow != null)
+            targetValue = Integer.valueOf(targetValueRow[getTilesTargetValueIndex()]);
+        return targetValue;
     }
 
-    public static String[] plateValueToPlateValueRow(int plateValue, int numPlate) {
-        String[] plateValueRow = new String[1 + PlatesTargetTableDataFields.PlatesTarget.values().length];  //  Champ ID + données
-        plateValueRow[TABLE_ID_INDEX] = plateIDPrefix + numPlate;
-        plateValueRow[getPlatesTargetValueIndex()] = String.valueOf(plateValue);
-        return plateValueRow;
+    public static String[] tileValueToTileValueRow(int tileValue, int numTile) {
+        String[] tileValueRow = new String[1 + TilesTargetTableDataFields.TilesTarget.values().length];  //  Champ ID + données
+        tileValueRow[TABLE_ID_INDEX] = tileIDPrefix + numTile;
+        tileValueRow[getTilesTargetValueIndex()] = String.valueOf(tileValue);
+        return tileValueRow;
     }
 
-    public static String[] targetToTargetRow(int target) {
-        String[] targetRow = new String[1 + PlatesTargetTableDataFields.PlatesTarget.values().length];   //  Champ ID + données
+    public static String[] targetValueToTargetValueRow(int target) {
+        String[] targetRow = new String[1 + TilesTargetTableDataFields.TilesTarget.values().length];   //  Champ ID + données
         targetRow[TABLE_ID_INDEX] = targetIDPrefix;
-        targetRow[getPlatesTargetValueIndex()] = String.valueOf(target);
+        targetRow[getTilesTargetValueIndex()] = String.valueOf(target);
         return targetRow;
     }
     //endregion

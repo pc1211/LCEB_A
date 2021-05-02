@@ -20,24 +20,28 @@ import com.example.pgyl.pekislib_a.InputButtonsActivity;
 import com.example.pgyl.pekislib_a.StringDB;
 import com.example.pgyl.pekislib_a.StringDBTables;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.example.pgyl.lceb_a.StringDBTables.getPlatesTargetTableName;
-import static com.example.pgyl.lceb_a.StringDBTables.getPlatesTargetValueIndex;
-import static com.example.pgyl.lceb_a.StringDBTables.plateIDPrefix;
-import static com.example.pgyl.lceb_a.StringDBTables.plateValueRowToPlateValue;
-import static com.example.pgyl.lceb_a.StringDBTables.plateValueToPlateValueRow;
+import static com.example.pgyl.lceb_a.StringDBTables.getTilesTargetTableName;
+import static com.example.pgyl.lceb_a.StringDBTables.getTilesTargetValueIndex;
 import static com.example.pgyl.lceb_a.StringDBTables.targetIDPrefix;
-import static com.example.pgyl.lceb_a.StringDBTables.targetRowToTarget;
-import static com.example.pgyl.lceb_a.StringDBTables.targetToTargetRow;
+import static com.example.pgyl.lceb_a.StringDBTables.targetValueRowToTargetValue;
+import static com.example.pgyl.lceb_a.StringDBTables.targetValueToTargetValueRow;
+import static com.example.pgyl.lceb_a.StringDBTables.tileIDPrefix;
+import static com.example.pgyl.lceb_a.StringDBTables.tileValueRowToTileValue;
+import static com.example.pgyl.lceb_a.StringDBTables.tileValueToTileValueRow;
 import static com.example.pgyl.lceb_a.StringDBUtils.createLCEBTableIfNotExists;
-import static com.example.pgyl.lceb_a.StringDBUtils.getDBPlateInitCount;
-import static com.example.pgyl.lceb_a.StringDBUtils.getDBPlateValueRow;
 import static com.example.pgyl.lceb_a.StringDBUtils.getDBTargetValueRow;
-import static com.example.pgyl.lceb_a.StringDBUtils.initializeTablePlatesTarget;
-import static com.example.pgyl.lceb_a.StringDBUtils.saveDBPlateValueRow;
+import static com.example.pgyl.lceb_a.StringDBUtils.getDBTileValueRow;
+import static com.example.pgyl.lceb_a.StringDBUtils.getDBTilesInitCount;
+import static com.example.pgyl.lceb_a.StringDBUtils.initializeTableTilesTarget;
 import static com.example.pgyl.lceb_a.StringDBUtils.saveDBTargetValueRow;
+import static com.example.pgyl.lceb_a.StringDBUtils.saveDBTileValueRow;
 import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
 import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableName;
@@ -46,7 +50,7 @@ import static com.example.pgyl.pekislib_a.StringDBUtils.getCurrentFromActivity;
 import static com.example.pgyl.pekislib_a.StringDBUtils.setCurrentForActivity;
 import static com.example.pgyl.pekislib_a.StringDBUtils.setStartStatusOfActivity;
 
-// A chaque ligne de résultat intermédiaire (lines[]), une paire de plaques (plates[]) disponibles
+// A chaque ligne de résultat intermédiaire (lines[]), une paire de plaques (tiles[]) disponibles
 // est sélectionnée et utilisée pour une opération.
 // Si le résultat de la ligne (qui devient une nouvelle plaque disponible)
 // atteint ou réduit l'écart minimum actuel par rapport à la cible
@@ -59,7 +63,7 @@ import static com.example.pgyl.pekislib_a.StringDBUtils.setStartStatusOfActivity
 // S'il n'y a plus de paire de plaques disponible pour la même ligne, on revient à la ligne précédente
 // S'il n'y a plus de ligne précédente, c'est fini !
 
-class Plate {           // Plaque
+class Tile {           // Plaque
     int value;          // Valeur de la plaque
     boolean used;       // True => Plaque n'est plus disponible
 }
@@ -83,44 +87,45 @@ enum Operators {   //  Opérateurs entre 2 plaques
 }
 
 class Line {     // Ligne de résultat intermédiaire
-    int numPlate1;    //   1e plaque
-    int numPlate2;    //   2e plaque
+    int numTile1;    //   1e plaque
+    int numTile2;    //   2e plaque
     Operators operator;
-    boolean ordered;    //  True si (numPlate1 operator numPlate2), False si (numPlate2 operator numPlate1)
+    boolean ordered;    //  True si (numTile1 operator numTile2), False si (numTile2 operator numTile1)
 }
 
-class SolutionText {       // Solution (exacte ou rapprochée) (en texte)
-    String pub;
+class Solution {       // Solution (exacte ou rapprochée) (en texte)
+    String publishedText;
     //  Texte de solution prêt pour la publication (Toutes les lignes et résultats, en clair)
     //      p.ex. "5 - 3 = 2
     //             2 * 6 = 12"
-    String sorted;
+    String shortText;
     //  Texte de solution trié par ligne pour vérifier si est bien différent des précédents,
     //      en commençant par la plus petite plaque au sein de chaque ligne.
     //      Pour le même exemple: "$2;*;6;12$3;-;5;2"
+    int opAddCount = 0;
+    int opSubCount = 0;
+    int opMulCount = 0;
+    int opDivCount = 0;
 }
 
 public class MainActivity extends Activity {
     private Button btnTarget;
-    Button[] btnPlates; // Boutons de plaque
-    private Button btnNewPlates;
-    private Button btnNewTarget;
+    Button[] btnTiles; // Boutons de plaque
+    private Button btnRandomTiles;
+    private Button btnRandomTarget;
     private Button btnFindSolutions;
     private TextView txvSolutions;
 
-    private final int SOLUTION_COUNT_TEMP_MAX = 50;  // Nombre max de solutions (augmenté automatiquement si nécessaire)
-
-    private int plateInitCount;       //  Nombre de plaques initial
-    private Plate[] plates;           //  Plaques initiales et intermédiaires
+    private int tilesInitCount;       //  Nombre de plaques initial
+    private Tile[] tiles;             //  Plaques initiales et intermédiaires
     private Line[] lines;             //  Lignes de résultat intermédiaire
-    private SolutionText[] solutionTexts;  //  Solutions (exactes ou rapprochées) validées
-    private String[] sortTexts;       //  Sert au tri par ligne d'une solution proposée (cf type TypeSolution)
+    private final List<Solution> solutions = new ArrayList<Solution>();   //  Solutions (exactes ou rapprochées) validées
+    private String[] shortTexts;       //  Sert au tri par ligne d'une solution proposée (cf type TypeSolution)
     int numLine;          //  N° de ligne de résultat intermédiaire actuelle
-    int target;           //  Cible à atteindre
+    int targetValue;           //  Cible à atteindre
     int diff;             //  Ecart par rapport à la cible à égaler ou réduire
     int minLineCount;     //  Nombre de lignes des solutions actuelles, à égaler ou réduire
     int opCount;          //  Nombre total d'opérations
-    int solCount;         //  Nombre de solutions exactes ou rapprochées distinctes
     boolean isExact;      //  True => Il y a au moins une solution exacte
     boolean isEnd;        //  True => C'est la fin des calculs, faute de plaques disponibles
     boolean isNewLine;    //  Une nouvelle ligne commence
@@ -128,7 +133,7 @@ public class MainActivity extends Activity {
     private boolean validReturnFromCalledActivity;
     private String calledActivityName;
     private StringDB stringDB;
-    private String valueName;
+    private String controlName;
     private Menu menu;
 
     @Override
@@ -148,10 +153,10 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
 
-        updatePlateValuesWithPlateTexts();
+        updateTileValuesWithTileTexts();
         updateTargetValueWithTargetText();
-        saveDBPlateValuesAndTarget();
-        btnPlates = null;
+        saveDBTileAndTargetValues();
+        btnTiles = null;
         stringDB.close();
         stringDB = null;
         menu = null;
@@ -162,16 +167,16 @@ public class MainActivity extends Activity {
         super.onResume();
 
         setupStringDB();
-        plateInitCount = getDBPlateInitCount(stringDB);
-        initArrays();
-        setupPlateButtons();
-        getDBPlateValuesAndTarget();
-        updatePlateTextsWithPlateValues();
+        tilesInitCount = getDBTilesInitCount(stringDB);
+        inits();
+        setupTileButtons();
+        getDBTileAndTargetValues();
+        updateTileTextsWithTileValues();
         updateTargetTextWithTargetValue();
         if (validReturnFromCalledActivity) {
             validReturnFromCalledActivity = false;
             if (calledActivityName.equals(Constants.PEKISLIB_ACTIVITIES.INPUT_BUTTONS.toString())) {
-                setControlTextByName(valueName, getCurrentFromActivity(stringDB, Constants.PEKISLIB_ACTIVITIES.INPUT_BUTTONS.toString(), getPlatesTargetTableName(), getPlatesTargetValueIndex()));
+                setControlTextByName(controlName, getCurrentFromActivity(stringDB, Constants.PEKISLIB_ACTIVITIES.INPUT_BUTTONS.toString(), getTilesTargetTableName(), getTilesTargetValueIndex()));
             }
         }
         invalidateOptionsMenu();
@@ -205,38 +210,38 @@ public class MainActivity extends Activity {
             calledActivityName = Constants.PEKISLIB_ACTIVITIES.INPUT_BUTTONS.toString();
             if (resultCode == RESULT_OK) {
                 validReturnFromCalledActivity = true;
-                valueName = returnIntent.getStringExtra(Constants.ACTIVITY_EXTRA_KEYS.TITLE.toString());   //  PLATE1,2,... ou TARGET
+                controlName = returnIntent.getStringExtra(Constants.ACTIVITY_EXTRA_KEYS.TITLE.toString());   //  TILE1,2,... ou TARGET
             }
         }
     }
 
-    private void onBtnPlateClick(String valueName) {
-        launchInputButtonsActivity(valueName, getControlTextByName(valueName));
+    private void onBtnTileClick(String controlName) {
+        launchInputButtonsActivity(controlName, getControlTextByName(controlName));
     }
 
-    private void onBtnTargetClick(String valueName) {
-        launchInputButtonsActivity(valueName, getControlTextByName(valueName));
+    private void onBtnTargetClick(String controlName) {
+        launchInputButtonsActivity(controlName, getControlTextByName(controlName));
     }
 
-    private void onBtnNewPlatesClick() {
-        int[] plateValues = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 25, 50, 50, 75, 75, 100, 100};  // Distribution des 28 plaques disponibles au départ
+    private void onBtnRandomTilesClick() {
+        int[] tileValues = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 25, 50, 50, 75, 75, 100, 100};  // Distribution des 28 plaques disponibles au départ
 
         invalidateSolutionDisplay();
-        boolean[] reservedIndexes = new boolean[plateValues.length];
-        for (int i = 1; i <= plateValues.length - 1; i = i + 1) {
+        boolean[] reservedIndexes = new boolean[tileValues.length];
+        for (int i = 1; i <= tileValues.length - 1; i = i + 1) {
             reservedIndexes[i] = false;  //  Toutes les 28 plaques sont disponibles au tirage
         }
         int index = 0;
-        for (int i = 1; i <= plateInitCount; i = i + 1) {  // Remplissage des plaques
+        for (int i = 1; i <= tilesInitCount; i = i + 1) {  // Remplissage des plaques
             do {
-                index = (int) (Math.random() * (plateValues.length));
+                index = (int) (Math.random() * (tileValues.length));
             } while (reservedIndexes[index]);    //  Jusqu'à trouver une plaque non encore tirée
             reservedIndexes[index] = true;
-            btnPlates[i - 1].setText(String.valueOf(plateValues[index]));
+            btnTiles[i - 1].setText(String.valueOf(tileValues[index]));
         }
     }
 
-    private void onBtnNewTargetClick() {
+    private void onBtnRandomTargetClick() {
         invalidateSolutionDisplay();
         btnTarget.setText(String.valueOf(1 + (int) (Math.random() * (999))));  // Remplissage de la cible à trouver
     }
@@ -245,24 +250,24 @@ public class MainActivity extends Activity {
         diff = 999999;
         minLineCount = 999999;
         opCount = 0;
-        solCount = 0;
         numLine = 1;
         isExact = false;
         isEnd = false;
         isNewLine = true;
 
-        invalidateSolutionDisplay();
-        updatePlateValuesWithPlateTexts();
+        updateTileValuesWithTileTexts();
         updateTargetValueWithTargetText();
+        invalidateSolutionDisplay();
+        solutions.clear();
         while (!isEnd) {
             if (isNewLine) {
                 isNewLine = false;
-                getFirstPlate1And2();   //  Prendre les 2 premières plaques disponibles
+                getFirstTile1And2();   //  Prendre les 2 premières plaques disponibles
             }
-            int result = getResultFromNextOperator();   //
+            int result = getResultFromNextOperator();
             if (lines[numLine].operator.equals(Operators.END)) {   //  Il n'y a plus d'opérateurs disponibles
-                if (!getNextPlate2()) {   //  Essayer la plaque suivant la 2e plaque actuelle
-                    if (!getNextPlate1And2()) {   //  Essayer les 2 plaques suivant les 2 plaques actuelles
+                if (!getNextTile2()) {   //  Essayer la plaque suivant la 2e plaque actuelle
+                    if (!getNextTile1And2()) {   //  Essayer les 2 plaques suivant les 2 plaques actuelles
                         if (numLine > 1)
                             numLine = numLine - 1;    //  Faute de plaques pour cette ligne, on revient à la ligne précédente
                         else isEnd = true;
@@ -270,77 +275,73 @@ public class MainActivity extends Activity {
                 }
                 continue;   // Reprendre à while(!isEnd)
             }
-            plates[plateInitCount + numLine].value = result;     //  Le résultat de la ligne est une nouvelle plaque disponible
-            plates[plateInitCount + numLine].used = false;
+            tiles[tilesInitCount + numLine].value = result;     //  Le résultat de la ligne est une nouvelle plaque disponible
+            tiles[tilesInitCount + numLine].used = false;
             opCount = opCount + 1;
-            if (isSolution(result)) {
-                SolutionText solutionText = getSolutionText();   //  Créer le texte complet de la solution proposée
-                if (isUnique(solutionText))    //  Les solutions précédentes sont différentes => La proposition de solution est validée
-                    register(solutionText);
+            if (isGood(result)) {
+                Solution solution = getSolution();   //  Créer le texte complet de la solution proposée
+                if (isUnique(solution))              //  Les solutions précédentes sont différentes => La proposition de solution est validée
+                    solutions.add(solution);
             }
-            if (numLine < (plateInitCount - 1)) {    //  Une nouvelle ligne est possible
+            if (numLine < (tilesInitCount - 1)) {    //  Une nouvelle ligne est possible
                 numLine = numLine + 1;    //  Nouvelle ligne de résultat intermédiaire
                 isNewLine = true;
             }
         }
-        publishResults();   //  Publier toutes les solutions exactes ou (à défaut) rapprochées validées
+        publishSolutions();   // Publier toutes les solutions exactes ou (à défaut) rapprochées validées
     }
 
-    private void saveDBPlateValuesAndTarget() {
-        for (int i = 1; i <= plateInitCount; i = i + 1) {
-            saveDBPlateValueRow(stringDB, plateValueToPlateValueRow(plates[i].value, i));
+    private void saveDBTileAndTargetValues() {
+        for (int i = 1; i <= tilesInitCount; i = i + 1) {
+            saveDBTileValueRow(stringDB, tileValueToTileValueRow(tiles[i].value, i));
         }
-        saveDBTargetValueRow(stringDB, targetToTargetRow(target));
+        saveDBTargetValueRow(stringDB, targetValueToTargetValueRow(targetValue));
     }
 
-    private void getDBPlateValuesAndTarget() {
-        for (int i = 1; i <= plateInitCount; i = i + 1) {
-            plates[i].value = plateValueRowToPlateValue(getDBPlateValueRow(stringDB, i));
+    private void getDBTileAndTargetValues() {
+        for (int i = 1; i <= tilesInitCount; i = i + 1) {
+            tiles[i].value = tileValueRowToTileValue(getDBTileValueRow(stringDB, i));
         }
-        target = targetRowToTarget(getDBTargetValueRow(stringDB));
+        targetValue = targetValueRowToTargetValue(getDBTargetValueRow(stringDB));
     }
 
-    private void initArrays() {
-        plates = new Plate[2 * plateInitCount]; //  => OK 1..2*plateCount-1  (cad plateCount plaques initiales + (plateCount-1) plaques de résultat intermédiaire
-        lines = new Line[plateInitCount];       //  => OK 1..plateCount-1
-        sortTexts = new String[plateInitCount];  // => OK 1..plateCount-1   Sert au tri par ligne d'une solution proposée (cf type TypeSolution)
-        solutionTexts = new SolutionText[SOLUTION_COUNT_TEMP_MAX];   // => OK 1..SOLUTION_COUNT_TEMP_MAX-1
+    private void inits() {
+        tiles = new Tile[2 * tilesInitCount];     //  => OK 1..2*tilesInitCount-1  (cad tilesInitCount plaques initiales + (tilesInitCount-1) plaques de résultat intermédiaire
+        lines = new Line[tilesInitCount];         //  => OK 1..tilesInitCount-1
+        shortTexts = new String[tilesInitCount];  //  => OK 1..tilesInitCount-1   Sert au tri par ligne d'une solution proposée
 
-        for (int i = 1; i <= (2 * plateInitCount - 1); i = i + 1) {   //  Instanciation de chaque élément
-            plates[i] = new Plate();
+        for (int i = 1; i <= (2 * tilesInitCount - 1); i = i + 1) {   //  Instanciation de chaque élément
+            tiles[i] = new Tile();
         }
-        for (int i = 1; i <= (plateInitCount - 1); i = i + 1) {
+        for (int i = 1; i <= (tilesInitCount - 1); i = i + 1) {
             lines[i] = new Line();
         }
-        for (int i = 1; i <= (SOLUTION_COUNT_TEMP_MAX - 1); i = i + 1) {
-            solutionTexts[i] = new SolutionText();
-        }
     }
 
-    private String getControlTextByName(String valueName) {
+    private String getControlTextByName(String controlName) {
         String controlText = "";
-        if (valueName.equals(targetIDPrefix)) {
+        if (controlName.equals(targetIDPrefix)) {
             controlText = btnTarget.getText().toString();
         }
-        if (valueName.startsWith(plateIDPrefix)) {
-            int numPlate = Integer.parseInt(valueName.substring(plateIDPrefix.length()));  // N° de plaque
-            controlText = btnPlates[numPlate - 1].getText().toString();
+        if (controlName.startsWith(tileIDPrefix)) {
+            int numTile = Integer.parseInt(controlName.substring(tileIDPrefix.length()));  // N° de plaque
+            controlText = btnTiles[numTile - 1].getText().toString();
         }
         return controlText;
     }
 
-    private void setControlTextByName(String valueName, String value) {
+    private void setControlTextByName(String controlName, String value) {
         try {
             int val = Integer.parseInt(value);    // Le nombre sélectionné
             String sVal = String.valueOf(val);    // Assurer un bon format p.ex. "0005"->"5"
-            if (valueName.startsWith(plateIDPrefix)) {    // Plaque
-                int numPlate = Integer.parseInt(valueName.substring(plateIDPrefix.length()));   // N° de plaque
-                if (!(sVal.equals(btnPlates[numPlate - 1].getText().toString()))) {  // Vrai changement
-                    btnPlates[numPlate - 1].setText(sVal);
+            if (controlName.startsWith(tileIDPrefix)) {    // Plaque
+                int numTile = Integer.parseInt(controlName.substring(tileIDPrefix.length()));   // N° de plaque
+                if (!(sVal.equals(btnTiles[numTile - 1].getText().toString()))) {  // Vrai changement
+                    btnTiles[numTile - 1].setText(sVal);
                     invalidateSolutionDisplay();
                 }
             }
-            if (valueName.equals(targetIDPrefix)) {  // Cible
+            if (controlName.equals(targetIDPrefix)) {  // Cible
                 if (!(sVal.equals(btnTarget.getText().toString()))) {   // Vrai changement
                     btnTarget.setText(sVal);
                     invalidateSolutionDisplay();
@@ -351,100 +352,100 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void updatePlateValuesWithPlateTexts() {
-        for (int i = 1; i <= plateInitCount; i = i + 1) {
+    private void updateTileValuesWithTileTexts() {
+        for (int i = 1; i <= tilesInitCount; i = i + 1) {
             try {
-                plates[i].value = Integer.parseInt(btnPlates[i - 1].getText().toString());    // Valeur de la plaque
-                plates[i].used = false;    //  Disponible
-                btnPlates[i - 1].setText(String.valueOf(plates[i].value));    //  Normalisé
+                tiles[i].value = Integer.parseInt(btnTiles[i - 1].getText().toString());    // Valeur de la plaque
+                tiles[i].used = false;    //  Disponible
+                btnTiles[i - 1].setText(String.valueOf(tiles[i].value));    //  Normalisé
             } catch (NumberFormatException ex) {   // KO
-                msgBox("ERROR: Invalid Plate value " + i, this);
+                msgBox("ERROR: Invalid Tile value " + i, this);
             }
         }
     }
 
     private void updateTargetValueWithTargetText() {
         try {
-            target = Integer.parseInt(btnTarget.getText().toString());   // Valeur de la cible
-            btnTarget.setText(String.valueOf(target));   //  Normalisé
+            targetValue = Integer.parseInt(btnTarget.getText().toString());   // Valeur de la cible
+            btnTarget.setText(String.valueOf(targetValue));   //  Normalisé
         } catch (NumberFormatException ex) {   // KO
             msgBox("ERROR: Invalid Target value", this);
         }
     }
 
-    private void updatePlateTextsWithPlateValues() {
-        for (int i = 1; i <= plateInitCount; i = i + 1) {
-            btnPlates[i - 1].setText(String.valueOf(plates[i].value));
+    private void updateTileTextsWithTileValues() {
+        for (int i = 1; i <= tilesInitCount; i = i + 1) {
+            btnTiles[i - 1].setText(String.valueOf(tiles[i].value));
         }
     }
 
     private void updateTargetTextWithTargetValue() {
-        btnTarget.setText(String.valueOf(target));
+        btnTarget.setText(String.valueOf(targetValue));
     }
 
-    int selectNextFreePlateNumber(int numPlate) {   // Sélectionner la 1e plaque disponible après le n° d'ordre numPlate
-        int nextFreePlateNumber = 0;   // Retourner 0 si aucune plaque disponible
-        int i = numPlate;
-        while (i < (plateInitCount + numLine - 1)) {   // Pour la ligne numLine, les plaques à vérifier vont de 1 à plateCount+numLine-1
+    int selectNextFreeTileNumber(int numTile) {   // Sélectionner la 1e plaque disponible après le n° d'ordre numTile
+        int nextFreeTileNumber = 0;   // Retourner 0 si aucune plaque disponible
+        int i = numTile;
+        while (i < (tilesInitCount + numLine - 1)) {   // Pour la ligne numLine, les plaques à vérifier vont de 1 à tilesInitCount+numLine-1
             i = i + 1;
-            if (!plates[i].used) {
-                plates[i].used = true;   // Sélectionner la plaque si disponible
-                nextFreePlateNumber = i;
+            if (!tiles[i].used) {
+                tiles[i].used = true;   // Sélectionner la plaque si disponible
+                nextFreeTileNumber = i;
                 break;
             }
         }
-        return nextFreePlateNumber;
+        return nextFreeTileNumber;
     }
 
-    int selectFirstFreePlateNumber() {   // Sélectionner la 1ère plaque disponible
-        return selectNextFreePlateNumber(0);   //  cad le 1er n° disponible après le n° 0
+    int selectFirstFreeTileNumber() {   // Sélectionner la 1ère plaque disponible
+        return selectNextFreeTileNumber(0);   //  cad le 1er n° disponible après le n° 0
     }
 
-    private void getFirstPlate1And2() {    //  Pour la ligne numLine (1..plateCount-1), plateCount-numLine+1 plaques sont disponibles sur un total de plateCount+numLine-1 plaques
-        lines[numLine].numPlate1 = selectFirstFreePlateNumber();   // Prendre les 2 premières plaques disponibles (il y en a toujours au moins 2)
-        lines[numLine].numPlate2 = selectNextFreePlateNumber(lines[numLine].numPlate1);  //  La 2e plaque doit toujours suivre la 1e
+    private void getFirstTile1And2() {    //  Pour la ligne numLine (1..tilesInitCount-1), tilesInitCount-numLine+1 plaques sont disponibles sur un total de tilesInitCount+numLine-1 plaques
+        lines[numLine].numTile1 = selectFirstFreeTileNumber();   // Prendre les 2 premières plaques disponibles (il y en a toujours au moins 2)
+        lines[numLine].numTile2 = selectNextFreeTileNumber(lines[numLine].numTile1);  //  La 2e plaque doit toujours suivre la 1e
         lines[numLine].operator = Operators.BEGIN;
     }
 
     private int getResultFromNextOperator() {
         int result = 0;
-        int valPlate1 = plates[lines[numLine].numPlate1].value;
-        int valPlate2 = plates[lines[numLine].numPlate2].value;
+        int valTile1 = tiles[lines[numLine].numTile1].value;
+        int valTile2 = tiles[lines[numLine].numTile2].value;
         lines[numLine].ordered = true;
         Operators operator = lines[numLine].operator.getNext();  //  2 plaques sont prêtes, passer à l'opérateur suivant
         switch (operator) {
             case ADD:
-                if ((valPlate1 == 0) || (valPlate2 == 0))
+                if ((valTile1 == 0) || (valTile2 == 0))
                     operator = Operators.END;   //  Les autres opérateurs ne seront pas examinés
-                else result = valPlate1 + valPlate2;
+                else result = valTile1 + valTile2;
                 break;
             case SUB:
-                if (valPlate1 == valPlate2)
+                if (valTile1 == valTile2)
                     operator = Operators.MUL;   //  On ne sait rien faire avec un résultat 0; Passer à MUL => Pas de break
                 else {
-                    if (valPlate1 < valPlate2) {
+                    if (valTile1 < valTile2) {
                         lines[numLine].ordered = false;
-                        result = valPlate2 - valPlate1;
-                    } else result = valPlate1 - valPlate2;
+                        result = valTile2 - valTile1;
+                    } else result = valTile1 - valTile2;
                     break;
                 }
             case MUL:
-                if ((valPlate1 == 1) || (valPlate2 == 1))
+                if ((valTile1 == 1) || (valTile2 == 1))
                     operator = Operators.END;   //  La division ne sera pas examinée
-                else result = valPlate1 * valPlate2;
+                else result = valTile1 * valTile2;
                 break;
             case DIV:
-                if (valPlate1 < valPlate2) {
-                    if ((valPlate2 % valPlate1) != 0)
+                if (valTile1 < valTile2) {
+                    if ((valTile2 % valTile1) != 0)
                         operator = Operators.END;    // La division doit être juste
                     else {
                         lines[numLine].ordered = false;
-                        result = valPlate2 / valPlate1;
+                        result = valTile2 / valTile1;
                     }
                 } else {
-                    if ((valPlate1 % valPlate2) != 0)
+                    if ((valTile1 % valTile2) != 0)
                         operator = Operators.END;  // La division doit être juste
-                    else result = valPlate1 / valPlate2;
+                    else result = valTile1 / valTile2;
                 }
                 break;
         }
@@ -452,134 +453,137 @@ public class MainActivity extends Activity {
         return result;
     }
 
-    private boolean getNextPlate2() {
-        boolean getNextPlate2 = false;
-        int numPlate2 = lines[numLine].numPlate2;
-        plates[numPlate2].used = false;   //  La 2e plaque actuelle redevient disponible
-        numPlate2 = selectNextFreePlateNumber(numPlate2);
-        if (numPlate2 != 0) {   // OK, on l'essaye en gardant la même 1e plaque
-            lines[numLine].numPlate2 = numPlate2;
+    private boolean getNextTile2() {
+        boolean getNextTile2 = false;
+        int numTile2 = lines[numLine].numTile2;
+        tiles[numTile2].used = false;   //  La 2e plaque actuelle redevient disponible
+        numTile2 = selectNextFreeTileNumber(numTile2);
+        if (numTile2 != 0) {   // OK, on l'essaye en gardant la même 1e plaque
+            lines[numLine].numTile2 = numTile2;
             lines[numLine].operator = Operators.BEGIN;
-            getNextPlate2 = true;
+            getNextTile2 = true;
         }
-        return getNextPlate2;
+        return getNextTile2;
     }
 
-    private boolean getNextPlate1And2() {
-        boolean getNextPlate1And2 = false;
-        int numPlate1 = lines[numLine].numPlate1;
-        int numPlate2 = lines[numLine].numPlate2;
-        plates[numPlate1].used = false;   //  Les 2 plaques actuelles redeviennent disponibles
-        plates[numPlate2].used = false;
-        numPlate1 = selectNextFreePlateNumber(numPlate1);
-        numPlate2 = selectNextFreePlateNumber(numPlate1);
-        if ((numPlate1 != 0) && (numPlate2 != 0)) {   // OK, on les essaye
-            lines[numLine].numPlate1 = numPlate1;
-            lines[numLine].numPlate2 = numPlate2;
+    private boolean getNextTile1And2() {
+        boolean getNextTile1And2 = false;
+        tiles[lines[numLine].numTile1].used = false;   //  Les 2 plaques actuelles redeviennent disponibles
+        tiles[lines[numLine].numTile2].used = false;
+        int numTile1 = selectNextFreeTileNumber(lines[numLine].numTile1);
+        int numTile2 = selectNextFreeTileNumber(numTile1);
+        if ((numTile1 != 0) && (numTile2 != 0)) {   // OK, on les essaye
+            lines[numLine].numTile1 = numTile1;
+            lines[numLine].numTile2 = numTile2;
             lines[numLine].operator = Operators.BEGIN;
-            getNextPlate1And2 = true;
+            getNextTile1And2 = true;
         }
-        return getNextPlate1And2;
+        return getNextTile1And2;
     }
 
-    private boolean isSolution(int result) {
-        boolean isSolution = false;
-        if (Math.abs(result - target) < diff) {     //  Résultat plus proche de la cible
-            diff = Math.abs(result - target);
+    private boolean isGood(int result) {
+        boolean isGood = false;
+        if (Math.abs(result - targetValue) < diff) {     //  Résultat plus proche de la cible
+            diff = Math.abs(result - targetValue);
             if (diff == 0) isExact = true;          //  Solution exacte trouvée !
             minLineCount = numLine;
-            solCount = 0;                           //  Effacer toutes les solutions précédentes
-            isSolution = true;
+            solutions.clear();                      //  Effacer toutes les solutions précédentes
+            isGood = true;
         } else {  //  Résultat identique ou plus écarté de la cible
-            if (Math.abs(result - target) == diff) {   //  Résultat identique
+            if (Math.abs(result - targetValue) == diff) {   //  Résultat identique
                 if (numLine < minLineCount) {          //  Nombre de lignes plus petit
                     minLineCount = numLine;
-                    solCount = 0;                      //  Effacer toutes les solutions précédentes
-                    isSolution = true;
+                    solutions.clear();                      //  Effacer toutes les solutions précédentes
+                    isGood = true;
                 } else {   //  Nombre de lignes identique ou plus grand
-                    if (numLine == minLineCount)
-                        isSolution = true;      //  Nombre de lignes identique
+                    if (numLine == minLineCount) isGood = true;      //  Nombre de lignes identique
                 }
             }
         }
-        return isSolution;
+        return isGood;
     }
 
-    private SolutionText getSolutionText() {
-        String pubText = "";
-        for (int i = 1; i <= numLine; i = i + 1) { // Construire tout le texte de la proposition de solution
-            int valPlate1 = plates[lines[i].numPlate1].value;
-            int valPlate2 = plates[lines[i].numPlate2].value;
-            if (!lines[i].ordered) {   // Inverser les plaques
-                int temp = valPlate1;
-                valPlate1 = valPlate2;
-                valPlate2 = temp;
+    private Solution getSolution() {
+        Solution solution = new Solution();
+        String publishedText = "";
+        for (int i = 1; i <= numLine; i = i + 1) {    //  Construire tout le texte de la proposition de solution
+            Operators operator = lines[i].operator;
+            int valTile1 = tiles[lines[i].numTile1].value;
+            int valTile2 = tiles[lines[i].numTile2].value;
+            int result = tiles[tilesInitCount + i].value;
+            if (!lines[i].ordered) {   //  Inverser les plaques
+                int temp = valTile1;
+                valTile1 = valTile2;
+                valTile2 = temp;
             }
-            pubText = pubText + " " + valPlate1 + " " + lines[i].operator.TEXT() + " " + valPlate2 + " = " + plates[plateInitCount + i].value + "\n";   //  Texte publiable de la proposition de solution:
-            if (valPlate1 > valPlate2) {   // Commencer par la plus petite plaque dans chaque ligne de cette proposition de solution, avant tri par ligne (Cf type TypeSolution)
-                int temp = valPlate1;
-                valPlate1 = valPlate2;
-                valPlate2 = temp;
+            publishedText = publishedText + " " + valTile1 + " " + operator.TEXT() + " " + valTile2 + " = " + result + "\n";   //  Texte publiable de la proposition de solution:
+            if (valTile1 > valTile2) {   //  Commencer par la plus petite plaque dans chaque ligne de cette proposition de solution, avant tri par ligne
+                int temp = valTile1;
+                valTile1 = valTile2;
+                valTile2 = temp;
             }
-            sortTexts[i] = "$" + valPlate1 + ";" + lines[i].operator.TEXT() + ";" + valPlate2 + ";" + plates[plateInitCount + i].value;
+            shortTexts[i] = "$" + valTile1 + ";" + operator.TEXT() + ";" + valTile2 + ";" + result;   //  Coder la solution en vue d'un tri par ligne de ses opérations
+            if (operator.equals(Operators.ADD))
+                solution.opAddCount = solution.opAddCount + 1;
+            if (operator.equals(Operators.SUB))
+                solution.opSubCount = solution.opSubCount + 1;
+            if (operator.equals(Operators.MUL))
+                solution.opMulCount = solution.opMulCount + 1;
+            if (operator.equals(Operators.DIV))
+                solution.opDivCount = solution.opDivCount + 1;
         }
-        java.util.Arrays.sort(sortTexts, 1, numLine);  // Trier la solution (préparée) par ligne (Cf type TypeSolution)
-        String sortText = "";
-        for (int i = 1; i <= numLine; i = i + 1) {   // Texte trié de la proposition de solution
-            sortText = sortText + sortTexts[i];
+        java.util.Arrays.sort(shortTexts, 1, numLine);  // Trier la solution (codée) par ligne d'opération
+        String shortText = "";
+        for (int i = 1; i <= numLine; i = i + 1) {   // Texte trié de la proposition de solution codée
+            shortText = shortText + shortTexts[i];
         }
-        SolutionText solutionText = new SolutionText();
-        solutionText.pub = pubText;
-        solutionText.sorted = sortText;
-        return solutionText;
+        solution.publishedText = publishedText;
+        solution.shortText = shortText;
+        return solution;
     }
 
-    private boolean isUnique(SolutionText solutionText) {
+    private boolean isUnique(Solution solution) {
         boolean isUnique = true;
-        if (solCount > 0) {
-            for (int i = 1; i <= solCount; i = i + 1) {
-                if (solutionTexts[i].sorted.equals(solutionText.sorted)) { // Une solution précédente est identique => Proposition de solution rejetée
-                    isUnique = false;
-                    break;
-                }
+        for (Solution sol : solutions) {
+            if (sol.shortText.equals(solution.shortText)) {
+                isUnique = false;
+                break;
             }
         }
         return isUnique;
     }
 
-    private void register(SolutionText solutionText) {
-        solCount = solCount + 1;
-        if ((solCount % SOLUTION_COUNT_TEMP_MAX) == 0)
-            redimSolutionTexts();   //  Espace maximum atteint pour les solutions
-        solutionTexts[solCount] = solutionText;
+    private void sortSolutions() {  //  Trier par opAddCount ASC, opSubCount ASC, opMulCount ASC, opDivCount ASC
+        if (solutions.size() >= 2) {
+            Collections.sort(solutions, new Comparator<Solution>() {
+                public int compare(Solution solution1, Solution solution2) {
+                    int res = Integer.compare(solution1.opAddCount, solution2.opAddCount);
+                    if (res == 0) {
+                        res = Integer.compare(solution1.opSubCount, solution2.opSubCount);
+                        if (res == 0) {
+                            res = Integer.compare(solution1.opMulCount, solution2.opMulCount);
+                            if (res == 0) {
+                                res = Integer.compare(solution1.opDivCount, solution2.opDivCount);
+                            }
+                        }
+                    }
+                    return res;
+                }
+            });
+        }
     }
 
-    private void redimSolutionTexts() {
-        int solCountMax = (solCount / SOLUTION_COUNT_TEMP_MAX + 1) * SOLUTION_COUNT_TEMP_MAX;  // Par paquet de SOLUTION_COUNT_TEMP_MAX solutions
-        SolutionText solutionsTextsTemp[] = new SolutionText[solCountMax];
-        for (int i = 1; i <= (solCountMax - 1); i = i + 1) {   // Instanciation
-            solutionsTextsTemp[i] = new SolutionText();
+    private void publishSolutions() {
+        sortSolutions();
+        String intro = " " + solutions.size() + (isExact ? "" : " nearly") + " exact solution" + (solutions.size() > 1 ? "s" : "") + " in " + minLineCount + " line" + (minLineCount > 1 ? "s" : "") + " (optimum)" + "\n";
+        intro = intro + " after " + opCount + " operation" + (opCount > 1 ? "s" : "") + "\n";
+        String s = intro;
+        for (Solution sol : solutions) {
+            s = s + "********* " + sol.opAddCount + "+ " + sol.opSubCount + "- " + sol.opMulCount + "* " + sol.opDivCount + "/ " + "*********" + "\n";
+            s = s + sol.publishedText;
         }
-        for (int i = 1; i <= (solCount - 1); i = i + 1) {   // Recopiage de l'existant
-            solutionsTextsTemp[i].pub = solutionTexts[i].pub;
-            solutionsTextsTemp[i].sorted = solutionTexts[i].sorted;
-        }
-        solutionTexts = solutionsTextsTemp;   // Réaffectation
-        solutionsTextsTemp = null;
-    }
-
-    private void publishResults() {
-        if (solCount > 0) {
-            solutionTexts[0] = new SolutionText();
-            solutionTexts[0].pub = " " + solCount + (isExact ? "" : " nearly") + " exact solution" + (solCount > 1 ? "s" : "") + " in " + minLineCount + " line" + (minLineCount > 1 ? "s" : "") + " (optimum)" + "\n";
-            solutionTexts[0].pub = solutionTexts[0].pub + " after " + opCount + " operation" + (opCount > 1 ? "s" : "") + "\n";
-            String s = "";
-            for (int i = 0; i <= solCount; i = i + 1) {
-                s = s + solutionTexts[i].pub + "*************************" + "\n";
-            }
-            txvSolutions.setText(s);
-            txvSolutions.scrollTo(0, 0);
-        }
+        txvSolutions.setText(s);
+        txvSolutions.scrollTo(0, 0);
         btnTarget.getBackground().setColorFilter(isExact ? Color.GREEN : Color.RED, PorterDuff.Mode.MULTIPLY);
         btnTarget.invalidate();
     }
@@ -592,8 +596,8 @@ public class MainActivity extends Activity {
 
     private void setupControls() {
         btnTarget = findViewById(R.id.BTN_TARGET);
-        btnNewPlates = findViewById(R.id.BTN_NEW_PLATES);
-        btnNewTarget = findViewById(R.id.BTN_NEW_TARGET);
+        btnRandomTiles = findViewById(R.id.BTN_RANDOM_TILES);
+        btnRandomTarget = findViewById(R.id.BTN_RANDOM_TARGET);
         btnFindSolutions = findViewById(R.id.BTN_FIND_SOLUTIONS);
         txvSolutions = findViewById(R.id.TXV_SOL);
         txvSolutions.setMovementMethod(new ScrollingMovementMethod());
@@ -603,16 +607,16 @@ public class MainActivity extends Activity {
                 onBtnTargetClick(targetIDPrefix);
             }
         });
-        btnNewPlates.setOnClickListener(new OnClickListener() {
+        btnRandomTiles.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                onBtnNewPlatesClick();
+                onBtnRandomTilesClick();
             }
         });
-        btnNewTarget.setOnClickListener(new OnClickListener() {
+        btnRandomTarget.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                onBtnNewTargetClick();
+                onBtnRandomTargetClick();
             }
         });
         btnFindSolutions.setOnClickListener(new OnClickListener() {
@@ -623,20 +627,20 @@ public class MainActivity extends Activity {
         });
     }
 
-    private void setupPlateButtons() {
+    private void setupTileButtons() {
         Class rid = R.id.class;
-        btnPlates = new Button[plateInitCount];
-        for (int i = 1; i <= plateInitCount; i = i + 1) {    // Récupération des boutons Plaque du layout XML
+        btnTiles = new Button[tilesInitCount];
+        for (int i = 1; i <= tilesInitCount; i = i + 1) {    // Récupération des boutons Plaque du layout XML
             try {
-                btnPlates[i - 1] = findViewById(rid.getField("BTN_PLATE" + i).getInt(rid));   //  BTN_PLATE1, BTN_PLATE2, ...
+                btnTiles[i - 1] = findViewById(rid.getField("BTN_TILE" + i).getInt(rid));   //  BTN_TILE1, BTN_TILE2, ...
             } catch (NoSuchFieldException | IllegalArgumentException | SecurityException | IllegalAccessException ex) {
                 Logger.getLogger(MainActivity.class.getName()).log(Level.SEVERE, null, ex);
             }
             final int ind = i;
-            btnPlates[i - 1].setOnClickListener(new View.OnClickListener() {
+            btnTiles[i - 1].setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    onBtnPlateClick(plateIDPrefix + ind);  // PLATE1, PLATE2, ...);
+                    onBtnTileClick(tileIDPrefix + ind);  // TILE1, TILE2, ...);
                 }
             });
         }
@@ -649,9 +653,9 @@ public class MainActivity extends Activity {
         if (!stringDB.tableExists(getActivityInfosTableName())) {
             createPekislibTableIfNotExists(stringDB, getActivityInfosTableName());
         }
-        if (!stringDB.tableExists(getPlatesTargetTableName())) {
-            createLCEBTableIfNotExists(stringDB, getPlatesTargetTableName());
-            initializeTablePlatesTarget(stringDB);
+        if (!stringDB.tableExists(getTilesTargetTableName())) {
+            createLCEBTableIfNotExists(stringDB, getTilesTargetTableName());
+            initializeTableTilesTarget(stringDB);
         }
     }
 
@@ -662,13 +666,13 @@ public class MainActivity extends Activity {
         startActivity(callingIntent);
     }
 
-    private void launchInputButtonsActivity(String valueName, String value) {
-        setCurrentForActivity(stringDB, Constants.PEKISLIB_ACTIVITIES.INPUT_BUTTONS.toString(), getPlatesTargetTableName(), getPlatesTargetValueIndex(), value);
+    private void launchInputButtonsActivity(String controlName, String value) {
+        setCurrentForActivity(stringDB, Constants.PEKISLIB_ACTIVITIES.INPUT_BUTTONS.toString(), getTilesTargetTableName(), getTilesTargetValueIndex(), value);
         setStartStatusOfActivity(stringDB, Constants.PEKISLIB_ACTIVITIES.INPUT_BUTTONS.toString(), StringDBTables.ACTIVITY_START_STATUS.COLD);
         Intent callingIntent = new Intent(this, InputButtonsActivity.class);
-        callingIntent.putExtra(StringDBTables.TABLE_EXTRA_KEYS.TABLE.toString(), getPlatesTargetTableName());
-        callingIntent.putExtra(StringDBTables.TABLE_EXTRA_KEYS.INDEX.toString(), getPlatesTargetValueIndex());
-        callingIntent.putExtra(Constants.ACTIVITY_EXTRA_KEYS.TITLE.toString(), valueName);
+        callingIntent.putExtra(StringDBTables.TABLE_EXTRA_KEYS.TABLE.toString(), getTilesTargetTableName());
+        callingIntent.putExtra(StringDBTables.TABLE_EXTRA_KEYS.INDEX.toString(), getTilesTargetValueIndex());
+        callingIntent.putExtra(Constants.ACTIVITY_EXTRA_KEYS.TITLE.toString(), controlName);
         startActivityForResult(callingIntent, Constants.PEKISLIB_ACTIVITIES.INPUT_BUTTONS.INDEX());
     }
 }

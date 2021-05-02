@@ -11,42 +11,42 @@
         android:orientation="horizontal">
 
         <Button
-            android:id="@+id/BTN_PLATE1"
+            android:id="@+id/BTN_TILE1"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="25" />
 
         <Button
-            android:id="@+id/BTN_PLATE2"
+            android:id="@+id/BTN_TILE2"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="50" />
 
         <Button
-            android:id="@+id/BTN_PLATE3"
+            android:id="@+id/BTN_TILE3"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="75" />
 
         <Button
-            android:id="@+id/BTN_PLATE4"
+            android:id="@+id/BTN_TILE4"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="100" />
 
         <Button
-            android:id="@+id/BTN_PLATE5"
+            android:id="@+id/BTN_TILE5"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="3" />
 
         <Button
-            android:id="@+id/BTN_PLATE6"
+            android:id="@+id/BTN_TILE6"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -83,7 +83,7 @@
         android:orientation="horizontal">
 
         <Button
-            android:id="@+id/BTN_NEW_TARGET"
+            android:id="@+id/BTN_RANDOM_TARGET"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_marginTop="2dp"
@@ -92,7 +92,7 @@
             android:text="Random target" />
 
         <Button
-            android:id="@+id/BTN_NEW_PLATES"
+            android:id="@+id/BTN_RANDOM_TILES"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_marginTop="2dp"
