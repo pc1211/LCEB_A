@@ -42,6 +42,7 @@ import static com.example.pgyl.lceb_a.StringDBUtils.getDBTilesInitCount;
 import static com.example.pgyl.lceb_a.StringDBUtils.initializeTableTilesTarget;
 import static com.example.pgyl.lceb_a.StringDBUtils.saveDBTargetValueRow;
 import static com.example.pgyl.lceb_a.StringDBUtils.saveDBTileValueRow;
+import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITIES;
 import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
 import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableName;
@@ -63,11 +64,6 @@ import static com.example.pgyl.pekislib_a.StringDBUtils.setStartStatusOfActivity
 // S'il n'y a plus de paire de plaques disponible pour la même ligne, on revient à la ligne précédente
 // S'il n'y a plus de ligne précédente, c'est fini !
 
-class Tile {           // Plaque
-    int value;          // Valeur de la plaque
-    boolean used;       // True => Plaque n'est plus disponible
-}
-
 enum Operators {   //  Opérateurs entre 2 plaques
     BEGIN("b"), ADD("+"), SUB("-"), MUL("*"), DIV("/"), END("e");
 
@@ -86,14 +82,19 @@ enum Operators {   //  Opérateurs entre 2 plaques
     }
 }
 
-class Line {     // Ligne de résultat intermédiaire
+class Tile {            // Plaque
+    int value;          // Valeur de la plaque
+    boolean used;       // True => Plaque n'est plus disponible
+}
+
+class Line {         // Ligne de résultat intermédiaire
     int numTile1;    //   1e plaque
     int numTile2;    //   2e plaque
     Operators operator;
     boolean ordered;    //  True si (numTile1 operator numTile2), False si (numTile2 operator numTile1)
 }
 
-class Solution {       // Solution (exacte ou rapprochée) (en texte)
+class Solution {       // Solution (exacte ou rapprochée)
     String publishedText;
     //  Texte de solution prêt pour la publication (Toutes les lignes et résultats, en clair)
     //      p.ex. "5 - 3 = 2
@@ -102,18 +103,15 @@ class Solution {       // Solution (exacte ou rapprochée) (en texte)
     //  Texte de solution trié par ligne pour vérifier si est bien différent des précédents,
     //      en commençant par la plus petite plaque au sein de chaque ligne.
     //      Pour le même exemple: "$2;*;6;12$3;-;5;2"
-    int opAddCount = 0;
-    int opSubCount = 0;
-    int opMulCount = 0;
-    int opDivCount = 0;
+    int addOpCount = 0;
+    int subOpCount = 0;
+    int mulOpCount = 0;
+    int divOpCount = 0;
 }
 
 public class MainActivity extends Activity {
     private Button btnTarget;
     Button[] btnTiles; // Boutons de plaque
-    private Button btnRandomTiles;
-    private Button btnRandomTarget;
-    private Button btnFindSolutions;
     private TextView txvSolutions;
 
     private int tilesInitCount;       //  Nombre de plaques initial
@@ -156,9 +154,9 @@ public class MainActivity extends Activity {
         updateTileValuesWithTileTexts();
         updateTargetValueWithTargetText();
         saveDBTileAndTargetValues();
-        btnTiles = null;
         stringDB.close();
         stringDB = null;
+        btnTiles = null;
         menu = null;
     }
 
@@ -175,8 +173,8 @@ public class MainActivity extends Activity {
         updateTargetTextWithTargetValue();
         if (validReturnFromCalledActivity) {
             validReturnFromCalledActivity = false;
-            if (calledActivityName.equals(Constants.PEKISLIB_ACTIVITIES.INPUT_BUTTONS.toString())) {
-                setControlTextByName(controlName, getCurrentFromActivity(stringDB, Constants.PEKISLIB_ACTIVITIES.INPUT_BUTTONS.toString(), getTilesTargetTableName(), getTilesTargetValueIndex()));
+            if (calledActivityName.equals(PEKISLIB_ACTIVITIES.INPUT_BUTTONS.toString())) {
+                setControlTextByName(controlName, getCurrentFromActivity(stringDB, PEKISLIB_ACTIVITIES.INPUT_BUTTONS.toString(), getTilesTargetTableName(), getTilesTargetValueIndex()));
             }
         }
         invalidateOptionsMenu();
@@ -228,7 +226,7 @@ public class MainActivity extends Activity {
 
         invalidateSolutionDisplay();
         boolean[] reservedIndexes = new boolean[tileValues.length];
-        for (int i = 1; i <= tileValues.length - 1; i = i + 1) {
+        for (int i = 1; i <= reservedIndexes.length - 1; i = i + 1) {
             reservedIndexes[i] = false;  //  Toutes les 28 plaques sont disponibles au tirage
         }
         int index = 0;
@@ -307,22 +305,20 @@ public class MainActivity extends Activity {
 
     private void inits() {
         tiles = new Tile[2 * tilesInitCount];     //  => OK 1..2*tilesInitCount-1  (cad tilesInitCount plaques initiales + (tilesInitCount-1) plaques de résultat intermédiaire
-        lines = new Line[tilesInitCount];         //  => OK 1..tilesInitCount-1
-        shortTexts = new String[tilesInitCount];  //  => OK 1..tilesInitCount-1   Sert au tri par ligne d'une solution proposée
-
-        for (int i = 1; i <= (2 * tilesInitCount - 1); i = i + 1) {   //  Instanciation de chaque élément
+        for (int i = 1; i <= (tiles.length - 1); i = i + 1) {   //  Instanciation de chaque élément
             tiles[i] = new Tile();
         }
-        for (int i = 1; i <= (tilesInitCount - 1); i = i + 1) {
+        lines = new Line[tilesInitCount];         //  => OK 1..tilesInitCount-1
+        for (int i = 1; i <= (lines.length - 1); i = i + 1) {
             lines[i] = new Line();
         }
+        shortTexts = new String[tilesInitCount];  //  => OK 1..tilesInitCount-1   Sert au tri par ligne d'une solution proposée
     }
 
     private String getControlTextByName(String controlName) {
         String controlText = "";
-        if (controlName.equals(targetIDPrefix)) {
+        if (controlName.equals(targetIDPrefix))
             controlText = btnTarget.getText().toString();
-        }
         if (controlName.startsWith(tileIDPrefix)) {
             int numTile = Integer.parseInt(controlName.substring(tileIDPrefix.length()));  // N° de plaque
             controlText = btnTiles[numTile - 1].getText().toString();
@@ -524,13 +520,13 @@ public class MainActivity extends Activity {
             }
             shortTexts[i] = "$" + valTile1 + ";" + operator.TEXT() + ";" + valTile2 + ";" + result;   //  Coder la solution en vue d'un tri par ligne de ses opérations
             if (operator.equals(Operators.ADD))
-                solution.opAddCount = solution.opAddCount + 1;
+                solution.addOpCount = solution.addOpCount + 1;
             if (operator.equals(Operators.SUB))
-                solution.opSubCount = solution.opSubCount + 1;
+                solution.subOpCount = solution.subOpCount + 1;
             if (operator.equals(Operators.MUL))
-                solution.opMulCount = solution.opMulCount + 1;
+                solution.mulOpCount = solution.mulOpCount + 1;
             if (operator.equals(Operators.DIV))
-                solution.opDivCount = solution.opDivCount + 1;
+                solution.divOpCount = solution.divOpCount + 1;
         }
         java.util.Arrays.sort(shortTexts, 1, numLine);  // Trier la solution (codée) par ligne d'opération
         String shortText = "";
@@ -553,17 +549,17 @@ public class MainActivity extends Activity {
         return isUnique;
     }
 
-    private void sortSolutions() {  //  Trier par opAddCount ASC, opSubCount ASC, opMulCount ASC, opDivCount ASC
+    private void sortSolutions() {  //  Trier par addOpCount ASC, subOpCount ASC, mulOpCount ASC, divOpCount ASC
         if (solutions.size() >= 2) {
             Collections.sort(solutions, new Comparator<Solution>() {
                 public int compare(Solution solution1, Solution solution2) {
-                    int res = Integer.compare(solution1.opAddCount, solution2.opAddCount);
+                    int res = Integer.compare(solution1.addOpCount, solution2.addOpCount);
                     if (res == 0) {
-                        res = Integer.compare(solution1.opSubCount, solution2.opSubCount);
+                        res = Integer.compare(solution1.subOpCount, solution2.subOpCount);
                         if (res == 0) {
-                            res = Integer.compare(solution1.opMulCount, solution2.opMulCount);
+                            res = Integer.compare(solution1.mulOpCount, solution2.mulOpCount);
                             if (res == 0) {
-                                res = Integer.compare(solution1.opDivCount, solution2.opDivCount);
+                                res = Integer.compare(solution1.divOpCount, solution2.divOpCount);
                             }
                         }
                     }
@@ -579,7 +575,7 @@ public class MainActivity extends Activity {
         intro = intro + " after " + opCount + " operation" + (opCount > 1 ? "s" : "") + "\n";
         String s = intro;
         for (Solution sol : solutions) {
-            s = s + "********* " + sol.opAddCount + "+ " + sol.opSubCount + "- " + sol.opMulCount + "* " + sol.opDivCount + "/ " + "*********" + "\n";
+            s = s + "********* " + sol.addOpCount + "+ " + sol.subOpCount + "- " + sol.mulOpCount + "* " + sol.divOpCount + "/ " + "*********" + "\n";
             s = s + sol.publishedText;
         }
         txvSolutions.setText(s);
@@ -596,9 +592,9 @@ public class MainActivity extends Activity {
 
     private void setupControls() {
         btnTarget = findViewById(R.id.BTN_TARGET);
-        btnRandomTiles = findViewById(R.id.BTN_RANDOM_TILES);
-        btnRandomTarget = findViewById(R.id.BTN_RANDOM_TARGET);
-        btnFindSolutions = findViewById(R.id.BTN_FIND_SOLUTIONS);
+        Button btnRandomTiles = findViewById(R.id.BTN_RANDOM_TILES);
+        Button btnRandomTarget = findViewById(R.id.BTN_RANDOM_TARGET);
+        Button btnFindSolutions = findViewById(R.id.BTN_FIND_SOLUTIONS);
         txvSolutions = findViewById(R.id.TXV_SOL);
         txvSolutions.setMovementMethod(new ScrollingMovementMethod());
         btnTarget.setOnClickListener(new View.OnClickListener() {
@@ -630,7 +626,7 @@ public class MainActivity extends Activity {
     private void setupTileButtons() {
         Class rid = R.id.class;
         btnTiles = new Button[tilesInitCount];
-        for (int i = 1; i <= tilesInitCount; i = i + 1) {    // Récupération des boutons Plaque du layout XML
+        for (int i = 1; i <= btnTiles.length; i = i + 1) {    // Récupération des boutons Plaque du layout XML
             try {
                 btnTiles[i - 1] = findViewById(rid.getField("BTN_TILE" + i).getInt(rid));   //  BTN_TILE1, BTN_TILE2, ...
             } catch (NoSuchFieldException | IllegalArgumentException | SecurityException | IllegalAccessException ex) {

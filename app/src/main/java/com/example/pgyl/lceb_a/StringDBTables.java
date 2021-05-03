@@ -8,14 +8,14 @@ import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
 import static com.example.pgyl.pekislib_a.StringDBTables.TABLE_IDS;
 
 public class StringDBTables {
-    public static String tileIDPrefix = "TILE";     //  Pour TILE1, TILE2, ...
-    public static String targetIDPrefix = "TARGET";   //  Pour TARGET
+    public static String tileIDPrefix = "TILE";      //  Pour TILE1, TILE2, ...
+    public static String targetIDPrefix = "TARGET";  //  Pour TARGET
 
     enum LCEB_TABLES {   // Les tables, rattachées à leurs champs de data
         TILES_TARGET(TilesTargetTableDataFields.TilesTarget.class, "Tiles and Target");
 
-        private int dataFieldsCount;
-        private String description;
+        private final int dataFieldsCount;
+        private final String description;
 
         LCEB_TABLES(Class<? extends TilesTargetTableDataFields> swTimerTableFields, String description) {
             dataFieldsCount = swTimerTableFields.getEnumConstants().length;
@@ -40,7 +40,7 @@ public class StringDBTables {
         enum TilesTarget implements TilesTargetTableDataFields {
             VALUE("Value");
 
-            private String valueLabel;
+            private final String valueLabel;
 
             TilesTarget(String valueLabel) {
                 this.valueLabel = valueLabel;
@@ -97,28 +97,28 @@ public class StringDBTables {
     public static int tileValueRowToTileValue(String[] tileValueRow) {
         int tileValue = 0;
         if (tileValueRow != null)
-            tileValue = Integer.valueOf(tileValueRow[getTilesTargetValueIndex()]);
+            tileValue = Integer.parseInt(tileValueRow[TilesTargetTableDataFields.TilesTarget.VALUE.INDEX()]);
         return tileValue;
     }
 
     public static int targetValueRowToTargetValue(String[] targetValueRow) {
         int targetValue = 0;
         if (targetValueRow != null)
-            targetValue = Integer.valueOf(targetValueRow[getTilesTargetValueIndex()]);
+            targetValue = Integer.parseInt(targetValueRow[TilesTargetTableDataFields.TilesTarget.VALUE.INDEX()]);
         return targetValue;
     }
 
     public static String[] tileValueToTileValueRow(int tileValue, int numTile) {
         String[] tileValueRow = new String[1 + TilesTargetTableDataFields.TilesTarget.values().length];  //  Champ ID + données
         tileValueRow[TABLE_ID_INDEX] = tileIDPrefix + numTile;
-        tileValueRow[getTilesTargetValueIndex()] = String.valueOf(tileValue);
+        tileValueRow[TilesTargetTableDataFields.TilesTarget.VALUE.INDEX()] = String.valueOf(tileValue);
         return tileValueRow;
     }
 
-    public static String[] targetValueToTargetValueRow(int target) {
+    public static String[] targetValueToTargetValueRow(int targetValue) {
         String[] targetRow = new String[1 + TilesTargetTableDataFields.TilesTarget.values().length];   //  Champ ID + données
         targetRow[TABLE_ID_INDEX] = targetIDPrefix;
-        targetRow[getTilesTargetValueIndex()] = String.valueOf(target);
+        targetRow[TilesTargetTableDataFields.TilesTarget.VALUE.INDEX()] = String.valueOf(targetValue);
         return targetRow;
     }
     //endregion
