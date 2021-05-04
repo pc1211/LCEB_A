@@ -95,14 +95,8 @@ class Line {         // Ligne de résultat intermédiaire
 }
 
 class Solution {       // Solution (exacte ou rapprochée)
-    String publishedText;
-    //  Texte de solution prêt pour la publication (Toutes les lignes et résultats, en clair)
-    //      p.ex. "5 - 3 = 2
-    //             2 * 6 = 12"
-    String shortText;
-    //  Texte de solution trié par ligne pour vérifier si est bien différent des précédents,
-    //      en commençant par la plus petite plaque au sein de chaque ligne.
-    //      Pour le même exemple: "$2;*;6;12$3;-;5;2"
+    String publishedText;  //  "5 - 3 = 2£2 * 6 = 12£"   Texte de solution prêt pour la publication (Toutes les lignes et résultats, en clair)
+    String shortText;      //  "*(2,6)12£-(2,5)3£        Texte court de solution trié par ligne pour vérifier si est bien différent des précédents, en commençant par la plus petite plaque au sein de chaque ligne
     int addOpCount = 0;
     int subOpCount = 0;
     int mulOpCount = 0;
@@ -132,6 +126,7 @@ public class MainActivity extends Activity {
     private String controlName;
     private Menu menu;
     private SolutionLinesListItemAdapter solutionLinesListItemAdapter;
+    private final String SEPARATOR = "£";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -259,8 +254,8 @@ public class MainActivity extends Activity {
     }
 
     private void onBtnFindSolutionsClick() {
-        diff = 999999;
-        minLineCount = 999999;
+        diff = 99999999;
+        minLineCount = 99999999;
         opCount = 0;
         numLine = 1;
         isExact = false;
@@ -303,83 +298,6 @@ public class MainActivity extends Activity {
         publishSolutions();   // Publier toutes les solutions exactes ou (à défaut) rapprochées validées
     }
 
-    private void saveDBTileAndTargetValues() {
-        for (int i = 1; i <= tilesInitCount; i = i + 1) {
-            saveDBTileValueRow(stringDB, tileValueToTileValueRow(tiles[i].value, i));
-        }
-        saveDBTargetValueRow(stringDB, targetValueToTargetValueRow(targetValue));
-    }
-
-    private void getDBTileAndTargetValues() {
-        for (int i = 1; i <= tilesInitCount; i = i + 1) {
-            tiles[i].value = tileValueRowToTileValue(getDBTileValueRow(stringDB, i));
-        }
-        targetValue = targetValueRowToTargetValue(getDBTargetValueRow(stringDB));
-    }
-
-    private String getControlTextByName(String controlName) {
-        String controlText = "";
-        if (controlName.equals(targetIDPrefix))
-            controlText = btnTarget.getText().toString();
-        if (controlName.startsWith(tileIDPrefix)) {
-            int numTile = Integer.parseInt(controlName.substring(tileIDPrefix.length()));  // N° de plaque
-            controlText = btnTiles[numTile - 1].getText().toString();
-        }
-        return controlText;
-    }
-
-    private void setControlTextByName(String controlName, String value) {
-        try {
-            int val = Integer.parseInt(value);    // Le nombre sélectionné
-            String sVal = String.valueOf(val);    // Assurer un bon format p.ex. "0005"->"5"
-            if (controlName.startsWith(tileIDPrefix)) {    // Plaque
-                int numTile = Integer.parseInt(controlName.substring(tileIDPrefix.length()));   // N° de plaque
-                if (!(sVal.equals(btnTiles[numTile - 1].getText().toString()))) {  // Vrai changement
-                    btnTiles[numTile - 1].setText(sVal);
-                    invalidateSolutionDisplay();
-                }
-            }
-            if (controlName.equals(targetIDPrefix)) {  // Cible
-                if (!(sVal.equals(btnTarget.getText().toString()))) {   // Vrai changement
-                    btnTarget.setText(sVal);
-                    invalidateSolutionDisplay();
-                }
-            }
-        } catch (NumberFormatException e) {
-            msgBox("ERROR: Invalid number", this);
-        }
-    }
-
-    private void updateTileValuesWithTileTexts() {
-        for (int i = 1; i <= tilesInitCount; i = i + 1) {
-            try {
-                tiles[i].value = Integer.parseInt(btnTiles[i - 1].getText().toString());    // Valeur de la plaque
-                tiles[i].used = false;    //  Disponible
-                btnTiles[i - 1].setText(String.valueOf(tiles[i].value));    //  Normalisé
-            } catch (NumberFormatException ex) {   // KO
-                msgBox("ERROR: Invalid Tile value " + i, this);
-            }
-        }
-    }
-
-    private void updateTargetValueWithTargetText() {
-        try {
-            targetValue = Integer.parseInt(btnTarget.getText().toString());   // Valeur de la cible
-            btnTarget.setText(String.valueOf(targetValue));   //  Normalisé
-        } catch (NumberFormatException ex) {   // KO
-            msgBox("ERROR: Invalid Target value", this);
-        }
-    }
-
-    private void updateTileTextsWithTileValues() {
-        for (int i = 1; i <= tilesInitCount; i = i + 1) {
-            btnTiles[i - 1].setText(String.valueOf(tiles[i].value));
-        }
-    }
-
-    private void updateTargetTextWithTargetValue() {
-        btnTarget.setText(String.valueOf(targetValue));
-    }
 
     int selectNextFreeTileNumber(int numTile) {   // Sélectionner la 1e plaque disponible après le n° d'ordre numTile
         int nextFreeTileNumber = 0;   // Retourner 0 si aucune plaque disponible
@@ -514,13 +432,13 @@ public class MainActivity extends Activity {
                 valTile1 = valTile2;
                 valTile2 = temp;
             }
-            publishedText = publishedText + " " + valTile1 + " " + operator.TEXT() + " " + valTile2 + " = " + result + "\n";   //  Texte publiable de la proposition de solution:
+            publishedText = publishedText + valTile1 + " " + operator.TEXT() + " " + valTile2 + " = " + result + SEPARATOR;   //  Texte publiable de la proposition de solution:
             if (valTile1 > valTile2) {   //  Commencer par la plus petite plaque dans chaque ligne de cette proposition de solution, avant tri par ligne
                 int temp = valTile1;
                 valTile1 = valTile2;
                 valTile2 = temp;
             }
-            shortTexts[i] = "$" + valTile1 + ";" + operator.TEXT() + ";" + valTile2 + ";" + result;   //  Coder la solution en vue d'un tri par ligne de ses opérations
+            shortTexts[i] = operator.TEXT() + "(" + valTile1 + "," + valTile2 + ")" + result + SEPARATOR;   //  Coder la solution en vue d'un tri par ligne de ses opérations
             if (operator.equals(Operators.ADD))
                 solution.addOpCount = solution.addOpCount + 1;
             if (operator.equals(Operators.SUB))
@@ -579,7 +497,7 @@ public class MainActivity extends Activity {
         solutionLines.add("after " + opCount + " operation" + (opCount > 1 ? "s" : ""));
         for (Solution sol : solutions) {
             solutionLines.add("********* " + sol.addOpCount + "+ " + sol.subOpCount + "- " + sol.mulOpCount + "* " + sol.divOpCount + "/ " + "*********");
-            solutionLines.addAll(Arrays.asList(sol.publishedText.split("\\n")));
+            solutionLines.addAll(Arrays.asList(sol.publishedText.split(SEPARATOR)));
         }
         solutionLinesListItemAdapter.setItems(solutionLines);
         solutionLinesListItemAdapter.notifyDataSetChanged();
@@ -588,10 +506,88 @@ public class MainActivity extends Activity {
     }
 
     private void invalidateSolutionDisplay() {
-        solutionLinesListItemAdapter.clearItems();   // Vider l'affichage de toutes les lignes de toutes les solutions exactes ou approchées
+        solutionLinesListItemAdapter.removeAllItems();   // Vider l'affichage de toutes les lignes de toutes les solutions exactes ou approchées
         solutionLinesListItemAdapter.notifyDataSetChanged();
         btnTarget.getBackground().clearColorFilter();
         btnTarget.invalidate();
+    }
+
+    private void saveDBTileAndTargetValues() {
+        for (int i = 1; i <= tilesInitCount; i = i + 1) {
+            saveDBTileValueRow(stringDB, tileValueToTileValueRow(tiles[i].value, i));
+        }
+        saveDBTargetValueRow(stringDB, targetValueToTargetValueRow(targetValue));
+    }
+
+    private void getDBTileAndTargetValues() {
+        for (int i = 1; i <= tilesInitCount; i = i + 1) {
+            tiles[i].value = tileValueRowToTileValue(getDBTileValueRow(stringDB, i));
+        }
+        targetValue = targetValueRowToTargetValue(getDBTargetValueRow(stringDB));
+    }
+
+    private String getControlTextByName(String controlName) {
+        String controlText = "";
+        if (controlName.equals(targetIDPrefix))
+            controlText = btnTarget.getText().toString();
+        if (controlName.startsWith(tileIDPrefix)) {
+            int numTile = Integer.parseInt(controlName.substring(tileIDPrefix.length()));  // N° de plaque
+            controlText = btnTiles[numTile - 1].getText().toString();
+        }
+        return controlText;
+    }
+
+    private void setControlTextByName(String controlName, String value) {
+        try {
+            int val = Integer.parseInt(value);    // Le nombre sélectionné
+            String sVal = String.valueOf(val);    // Assurer un bon format p.ex. "0005"->"5"
+            if (controlName.startsWith(tileIDPrefix)) {    // Plaque
+                int numTile = Integer.parseInt(controlName.substring(tileIDPrefix.length()));   // N° de plaque
+                if (!(sVal.equals(btnTiles[numTile - 1].getText().toString()))) {  // Vrai changement
+                    btnTiles[numTile - 1].setText(sVal);
+                    invalidateSolutionDisplay();
+                }
+            }
+            if (controlName.equals(targetIDPrefix)) {  // Cible
+                if (!(sVal.equals(btnTarget.getText().toString()))) {   // Vrai changement
+                    btnTarget.setText(sVal);
+                    invalidateSolutionDisplay();
+                }
+            }
+        } catch (NumberFormatException e) {
+            msgBox("ERROR: Invalid number", this);
+        }
+    }
+
+    private void updateTileValuesWithTileTexts() {
+        for (int i = 1; i <= tilesInitCount; i = i + 1) {
+            try {
+                tiles[i].value = Integer.parseInt(btnTiles[i - 1].getText().toString());    // Valeur de la plaque
+                tiles[i].used = false;    //  Disponible
+                btnTiles[i - 1].setText(String.valueOf(tiles[i].value));    //  Normalisé
+            } catch (NumberFormatException ex) {   // KO
+                msgBox("ERROR: Invalid Tile value " + i, this);
+            }
+        }
+    }
+
+    private void updateTargetValueWithTargetText() {
+        try {
+            targetValue = Integer.parseInt(btnTarget.getText().toString());   // Valeur de la cible
+            btnTarget.setText(String.valueOf(targetValue));   //  Normalisé
+        } catch (NumberFormatException ex) {   // KO
+            msgBox("ERROR: Invalid Target value", this);
+        }
+    }
+
+    private void updateTileTextsWithTileValues() {
+        for (int i = 1; i <= tilesInitCount; i = i + 1) {
+            btnTiles[i - 1].setText(String.valueOf(tiles[i].value));
+        }
+    }
+
+    private void updateTargetTextWithTargetValue() {
+        btnTarget.setText(String.valueOf(targetValue));
     }
 
     private void setupButtons() {

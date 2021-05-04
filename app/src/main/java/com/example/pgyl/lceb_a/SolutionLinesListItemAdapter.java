@@ -24,7 +24,7 @@ public class SolutionLinesListItemAdapter extends BaseAdapter {
     }
 
     public void close() {
-        clearItems();
+        removeAllItems();
         solutionLines = null;
         context = null;
     }
@@ -33,7 +33,7 @@ public class SolutionLinesListItemAdapter extends BaseAdapter {
         this.solutionLines = solutionLines;
     }
 
-    public void clearItems() {
+    public void removeAllItems() {
         if (solutionLines != null) solutionLines.clear();
     }
 
