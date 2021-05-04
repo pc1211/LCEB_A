@@ -5,14 +5,13 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.os.Bundle;
-import android.text.method.ScrollingMovementMethod;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
 import android.widget.Button;
-import android.widget.TextView;
+import android.widget.ListView;
 
 import com.example.pgyl.pekislib_a.Constants;
 import com.example.pgyl.pekislib_a.HelpActivity;
@@ -21,6 +20,7 @@ import com.example.pgyl.pekislib_a.StringDB;
 import com.example.pgyl.pekislib_a.StringDBTables;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -111,9 +111,7 @@ class Solution {       // Solution (exacte ou rapprochée)
 
 public class MainActivity extends Activity {
     private Button btnTarget;
-    Button[] btnTiles; // Boutons de plaque
-    private TextView txvSolutions;
-
+    private Button[] btnTiles; // Boutons de plaque
     private int tilesInitCount;       //  Nombre de plaques initial
     private Tile[] tiles;             //  Plaques initiales et intermédiaires
     private Line[] lines;             //  Lignes de résultat intermédiaire
@@ -133,6 +131,7 @@ public class MainActivity extends Activity {
     private StringDB stringDB;
     private String controlName;
     private Menu menu;
+    private SolutionLinesListItemAdapter solutionLinesListItemAdapter;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -143,7 +142,7 @@ public class MainActivity extends Activity {
         getWindow().requestFeature(Window.FEATURE_ACTION_BAR);
         getActionBar().setTitle(ACTIVITY_TITLE);
         setContentView(R.layout.activity_main);
-        setupControls();
+        setupButtons();
         validReturnFromCalledActivity = false;
     }
 
@@ -154,6 +153,8 @@ public class MainActivity extends Activity {
         updateTileValuesWithTileTexts();
         updateTargetValueWithTargetText();
         saveDBTileAndTargetValues();
+        solutionLinesListItemAdapter.close();
+        solutionLinesListItemAdapter = null;
         stringDB.close();
         stringDB = null;
         btnTiles = null;
@@ -167,6 +168,7 @@ public class MainActivity extends Activity {
         setupStringDB();
         tilesInitCount = getDBTilesInitCount(stringDB);
         inits();
+        setupSolutionLinesListView();
         setupTileButtons();
         getDBTileAndTargetValues();
         updateTileTextsWithTileValues();
@@ -178,6 +180,18 @@ public class MainActivity extends Activity {
             }
         }
         invalidateOptionsMenu();
+    }
+
+    private void inits() {
+        tiles = new Tile[2 * tilesInitCount];     //  => OK 1..2*tilesInitCount-1  (cad tilesInitCount plaques initiales + (tilesInitCount-1) plaques de résultat intermédiaire
+        for (int i = 1; i <= (tiles.length - 1); i = i + 1) {   //  Instanciation de chaque élément
+            tiles[i] = new Tile();
+        }
+        lines = new Line[tilesInitCount];         //  => OK 1..tilesInitCount-1
+        for (int i = 1; i <= (lines.length - 1); i = i + 1) {
+            lines[i] = new Line();
+        }
+        shortTexts = new String[tilesInitCount];  //  => OK 1..tilesInitCount-1   Sert au tri par ligne d'une solution proposée
     }
 
     @Override
@@ -301,18 +315,6 @@ public class MainActivity extends Activity {
             tiles[i].value = tileValueRowToTileValue(getDBTileValueRow(stringDB, i));
         }
         targetValue = targetValueRowToTargetValue(getDBTargetValueRow(stringDB));
-    }
-
-    private void inits() {
-        tiles = new Tile[2 * tilesInitCount];     //  => OK 1..2*tilesInitCount-1  (cad tilesInitCount plaques initiales + (tilesInitCount-1) plaques de résultat intermédiaire
-        for (int i = 1; i <= (tiles.length - 1); i = i + 1) {   //  Instanciation de chaque élément
-            tiles[i] = new Tile();
-        }
-        lines = new Line[tilesInitCount];         //  => OK 1..tilesInitCount-1
-        for (int i = 1; i <= (lines.length - 1); i = i + 1) {
-            lines[i] = new Line();
-        }
-        shortTexts = new String[tilesInitCount];  //  => OK 1..tilesInitCount-1   Sert au tri par ligne d'une solution proposée
     }
 
     private String getControlTextByName(String controlName) {
@@ -571,56 +573,64 @@ public class MainActivity extends Activity {
 
     private void publishSolutions() {
         sortSolutions();
-        String intro = " " + solutions.size() + (isExact ? "" : " nearly") + " exact solution" + (solutions.size() > 1 ? "s" : "") + " in " + minLineCount + " line" + (minLineCount > 1 ? "s" : "") + " (optimum)" + "\n";
-        intro = intro + " after " + opCount + " operation" + (opCount > 1 ? "s" : "") + "\n";
-        String s = intro;
+        ArrayList<String> solutionLines = new ArrayList<String>();
+        solutionLines.clear();
+        solutionLines.add(solutions.size() + (isExact ? "" : " nearly") + " exact solution" + (solutions.size() > 1 ? "s" : "") + " in " + minLineCount + " line" + (minLineCount > 1 ? "s" : "") + " (optimum)");
+        solutionLines.add("after " + opCount + " operation" + (opCount > 1 ? "s" : ""));
         for (Solution sol : solutions) {
-            s = s + "********* " + sol.addOpCount + "+ " + sol.subOpCount + "- " + sol.mulOpCount + "* " + sol.divOpCount + "/ " + "*********" + "\n";
-            s = s + sol.publishedText;
+            solutionLines.add("********* " + sol.addOpCount + "+ " + sol.subOpCount + "- " + sol.mulOpCount + "* " + sol.divOpCount + "/ " + "*********");
+            solutionLines.addAll(Arrays.asList(sol.publishedText.split("\\n")));
         }
-        txvSolutions.setText(s);
-        txvSolutions.scrollTo(0, 0);
+        solutionLinesListItemAdapter.setItems(solutionLines);
+        solutionLinesListItemAdapter.notifyDataSetChanged();
         btnTarget.getBackground().setColorFilter(isExact ? Color.GREEN : Color.RED, PorterDuff.Mode.MULTIPLY);
         btnTarget.invalidate();
     }
 
     private void invalidateSolutionDisplay() {
-        txvSolutions.setText("");       // Vider l'affichage de toutes les lignes de toutes les solutions exactes ou approchées
+        solutionLinesListItemAdapter.clearItems();   // Vider l'affichage de toutes les lignes de toutes les solutions exactes ou approchées
+        solutionLinesListItemAdapter.notifyDataSetChanged();
         btnTarget.getBackground().clearColorFilter();
         btnTarget.invalidate();
     }
 
-    private void setupControls() {
+    private void setupButtons() {
         btnTarget = findViewById(R.id.BTN_TARGET);
-        Button btnRandomTiles = findViewById(R.id.BTN_RANDOM_TILES);
-        Button btnRandomTarget = findViewById(R.id.BTN_RANDOM_TARGET);
-        Button btnFindSolutions = findViewById(R.id.BTN_FIND_SOLUTIONS);
-        txvSolutions = findViewById(R.id.TXV_SOL);
-        txvSolutions.setMovementMethod(new ScrollingMovementMethod());
         btnTarget.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 onBtnTargetClick(targetIDPrefix);
             }
         });
+        Button btnRandomTiles = findViewById(R.id.BTN_RANDOM_TILES);
         btnRandomTiles.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 onBtnRandomTilesClick();
             }
         });
+        Button btnRandomTarget = findViewById(R.id.BTN_RANDOM_TARGET);
         btnRandomTarget.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 onBtnRandomTargetClick();
             }
         });
+        Button btnFindSolutions = findViewById(R.id.BTN_FIND_SOLUTIONS);
         btnFindSolutions.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 onBtnFindSolutionsClick();
             }
         });
+    }
+
+    private void setupSolutionLinesListView() {
+        ListView solutionLinesListView = findViewById(R.id.LV_SOLUTION_LINES);
+        solutionLinesListItemAdapter = new SolutionLinesListItemAdapter(this);
+        solutionLinesListView.setAdapter(solutionLinesListItemAdapter);
+        solutionLinesListView.setFastScrollEnabled(true);
+        solutionLinesListView.setFastScrollAlwaysVisible(true);
     }
 
     private void setupTileButtons() {
