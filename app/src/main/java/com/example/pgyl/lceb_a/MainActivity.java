@@ -125,6 +125,7 @@ public class MainActivity extends Activity {
     private StringDB stringDB;
     private String controlName;
     private Menu menu;
+    private ListView solutionLinesListView;
     private SolutionLinesListItemAdapter solutionLinesListItemAdapter;
     private final String SEPARATOR = "£";
 
@@ -501,6 +502,7 @@ public class MainActivity extends Activity {
         }
         solutionLinesListItemAdapter.setItems(solutionLines);
         solutionLinesListItemAdapter.notifyDataSetChanged();
+        solutionLinesListView.setSelection(0);           //  Scrollbar thumb en 1e position (pour éviter qu'il soit masqué s'il était précédemment plus bas)
         btnTarget.getBackground().setColorFilter(isExact ? Color.GREEN : Color.RED, PorterDuff.Mode.MULTIPLY);
         btnTarget.invalidate();
     }
@@ -622,7 +624,7 @@ public class MainActivity extends Activity {
     }
 
     private void setupSolutionLinesListView() {
-        ListView solutionLinesListView = findViewById(R.id.LV_SOLUTION_LINES);
+        solutionLinesListView = findViewById(R.id.LV_SOLUTION_LINES);
         solutionLinesListItemAdapter = new SolutionLinesListItemAdapter(this);
         solutionLinesListView.setAdapter(solutionLinesListItemAdapter);
         solutionLinesListView.setFastScrollEnabled(true);
