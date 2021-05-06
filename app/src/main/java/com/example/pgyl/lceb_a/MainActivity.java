@@ -87,16 +87,16 @@ class Tile {            // Plaque
     boolean used;       // True => Plaque n'est plus disponible
 }
 
-class Line {         // Ligne de résultat intermédiaire
-    int numTile1;    //   1e plaque
-    int numTile2;    //   2e plaque
+class Line {             // Ligne de résultat intermédiaire
+    int numTile1;        //   1e plaque
+    int numTile2;        //   2e plaque
     Operators operator;
-    boolean ordered;    //  True si (numTile1 operator numTile2), False si (numTile2 operator numTile1)
+    boolean ordered;     //  True si (numTile1 operator numTile2), False si (numTile2 operator numTile1)
 }
 
 class Solution {       // Solution (exacte ou rapprochée)
     String publishedText;  //  "5 - 3 = 2£2 * 6 = 12£"   Texte de solution prêt pour la publication (Toutes les lignes et résultats, en clair)
-    String shortText;      //  "*(2,6)12£-(2,5)3£        Texte court de solution trié par ligne pour vérifier si est bien différent des précédents, en commençant par la plus petite plaque au sein de chaque ligne
+    String shortText;      //  "*(2,6)12£-(2,5)3£"       Texte court de solution trié par ligne pour vérifier si est bien différent des précédents, en commençant par la plus petite plaque au sein de chaque ligne
     int addOpCount = 0;
     int subOpCount = 0;
     int mulOpCount = 0;
@@ -125,7 +125,6 @@ public class MainActivity extends Activity {
     private StringDB stringDB;
     private String controlName;
     private Menu menu;
-    private ListView solutionLinesListView;
     private SolutionLinesListItemAdapter solutionLinesListItemAdapter;
     private final String SEPARATOR = "£";
 
@@ -270,12 +269,12 @@ public class MainActivity extends Activity {
         while (!isEnd) {
             if (isNewLine) {
                 isNewLine = false;
-                getFirstTile1And2();   //  Prendre les 2 premières plaques disponibles
+                setFirstTile1And2();   //  Prendre les 2 premières plaques disponibles
             }
             int result = getResultFromNextOperator();
             if (lines[numLine].operator.equals(Operators.END)) {   //  Il n'y a plus d'opérateurs disponibles
-                if (!getNextTile2()) {   //  Essayer la plaque suivant la 2e plaque actuelle
-                    if (!getNextTile1And2()) {   //  Essayer les 2 plaques suivant les 2 plaques actuelles
+                if (!setNextTile2()) {   //  Essayer la plaque suivant la 2e plaque actuelle
+                    if (!setNextTile1And2()) {   //  Essayer les 2 plaques suivant les 2 plaques actuelles
                         if (numLine > 1)
                             numLine = numLine - 1;    //  Faute de plaques pour cette ligne, on revient à la ligne précédente
                         else isEnd = true;
@@ -300,7 +299,7 @@ public class MainActivity extends Activity {
     }
 
 
-    int selectNextFreeTileNumber(int numTile) {   // Sélectionner la 1e plaque disponible après le n° d'ordre numTile
+    int bookNextFreeTileNumber(int numTile) {   // Sélectionner la 1e plaque disponible après le n° d'ordre numTile
         int nextFreeTileNumber = 0;   // Retourner 0 si aucune plaque disponible
         int i = numTile;
         while (i < (tilesInitCount + numLine - 1)) {   // Pour la ligne numLine, les plaques à vérifier vont de 1 à tilesInitCount+numLine-1
@@ -314,14 +313,42 @@ public class MainActivity extends Activity {
         return nextFreeTileNumber;
     }
 
-    int selectFirstFreeTileNumber() {   // Sélectionner la 1ère plaque disponible
-        return selectNextFreeTileNumber(0);   //  cad le 1er n° disponible après le n° 0
+    int bookFirstFreeTileNumber() {   // Sélectionner la 1ère plaque disponible
+        return bookNextFreeTileNumber(0);   //  cad le 1er n° disponible après le n° 0
     }
 
-    private void getFirstTile1And2() {    //  Pour la ligne numLine (1..tilesInitCount-1), tilesInitCount-numLine+1 plaques sont disponibles sur un total de tilesInitCount+numLine-1 plaques
-        lines[numLine].numTile1 = selectFirstFreeTileNumber();   // Prendre les 2 premières plaques disponibles (il y en a toujours au moins 2)
-        lines[numLine].numTile2 = selectNextFreeTileNumber(lines[numLine].numTile1);  //  La 2e plaque doit toujours suivre la 1e
+    private void setFirstTile1And2() {    //  Pour la ligne numLine (1..tilesInitCount-1), tilesInitCount-numLine+1 plaques sont disponibles sur un total de tilesInitCount+numLine-1 plaques
+        lines[numLine].numTile1 = bookFirstFreeTileNumber();   // Prendre les 2 premières plaques disponibles (il y en a toujours au moins 2)
+        lines[numLine].numTile2 = bookNextFreeTileNumber(lines[numLine].numTile1);  //  La 2e plaque doit toujours suivre la 1e
         lines[numLine].operator = Operators.BEGIN;
+    }
+
+    private boolean setNextTile2() {
+        boolean getNextTile2 = false;
+        int numTile2 = lines[numLine].numTile2;
+        tiles[numTile2].used = false;   //  La 2e plaque actuelle redevient disponible
+        numTile2 = bookNextFreeTileNumber(numTile2);
+        if (numTile2 != 0) {   // OK, on l'essaye en gardant la même 1e plaque
+            lines[numLine].numTile2 = numTile2;
+            lines[numLine].operator = Operators.BEGIN;
+            getNextTile2 = true;
+        }
+        return getNextTile2;
+    }
+
+    private boolean setNextTile1And2() {
+        boolean getNextTile1And2 = false;
+        tiles[lines[numLine].numTile1].used = false;   //  Les 2 plaques actuelles redeviennent disponibles
+        tiles[lines[numLine].numTile2].used = false;
+        int numTile1 = bookNextFreeTileNumber(lines[numLine].numTile1);
+        int numTile2 = bookNextFreeTileNumber(numTile1);
+        if ((numTile1 != 0) && (numTile2 != 0)) {   // OK, on les essaye
+            lines[numLine].numTile1 = numTile1;
+            lines[numLine].numTile2 = numTile2;
+            lines[numLine].operator = Operators.BEGIN;
+            getNextTile1And2 = true;
+        }
+        return getNextTile1And2;
     }
 
     private int getResultFromNextOperator() {
@@ -368,34 +395,6 @@ public class MainActivity extends Activity {
         }
         lines[numLine].operator = operator;
         return result;
-    }
-
-    private boolean getNextTile2() {
-        boolean getNextTile2 = false;
-        int numTile2 = lines[numLine].numTile2;
-        tiles[numTile2].used = false;   //  La 2e plaque actuelle redevient disponible
-        numTile2 = selectNextFreeTileNumber(numTile2);
-        if (numTile2 != 0) {   // OK, on l'essaye en gardant la même 1e plaque
-            lines[numLine].numTile2 = numTile2;
-            lines[numLine].operator = Operators.BEGIN;
-            getNextTile2 = true;
-        }
-        return getNextTile2;
-    }
-
-    private boolean getNextTile1And2() {
-        boolean getNextTile1And2 = false;
-        tiles[lines[numLine].numTile1].used = false;   //  Les 2 plaques actuelles redeviennent disponibles
-        tiles[lines[numLine].numTile2].used = false;
-        int numTile1 = selectNextFreeTileNumber(lines[numLine].numTile1);
-        int numTile2 = selectNextFreeTileNumber(numTile1);
-        if ((numTile1 != 0) && (numTile2 != 0)) {   // OK, on les essaye
-            lines[numLine].numTile1 = numTile1;
-            lines[numLine].numTile2 = numTile2;
-            lines[numLine].operator = Operators.BEGIN;
-            getNextTile1And2 = true;
-        }
-        return getNextTile1And2;
     }
 
     private boolean isGood(int result) {
@@ -502,7 +501,6 @@ public class MainActivity extends Activity {
         }
         solutionLinesListItemAdapter.setItems(solutionLines);
         solutionLinesListItemAdapter.notifyDataSetChanged();
-        solutionLinesListView.setSelection(0);           //  Scrollbar thumb en 1e position (pour éviter qu'il soit masqué s'il était précédemment plus bas)
         btnTarget.getBackground().setColorFilter(isExact ? Color.GREEN : Color.RED, PorterDuff.Mode.MULTIPLY);
         btnTarget.invalidate();
     }
@@ -624,7 +622,7 @@ public class MainActivity extends Activity {
     }
 
     private void setupSolutionLinesListView() {
-        solutionLinesListView = findViewById(R.id.LV_SOLUTION_LINES);
+        ListView solutionLinesListView = findViewById(R.id.LV_SOLUTION_LINES);
         solutionLinesListItemAdapter = new SolutionLinesListItemAdapter(this);
         solutionLinesListView.setAdapter(solutionLinesListItemAdapter);
         solutionLinesListView.setFastScrollEnabled(true);
