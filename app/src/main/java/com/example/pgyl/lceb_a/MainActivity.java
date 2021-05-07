@@ -278,8 +278,8 @@ public class MainActivity extends Activity {
             }
             int result = getResultFromNextOperator();
             if (lines[numLine].operator.equals(Operators.END)) {   //  Il n'y a plus d'opérateurs disponibles
-                if (!changeTile2()) {   //  Libérer la 2e plaque et essayer la suivante
-                    if (!changeTile1And2(false)) {   //  Libérer les 2 plaques et essayer les suivantes
+                if (!changeTile2()) {   //  Libérer la 2e plaque et prendre la suivante
+                    if (!changeTile1And2(false)) {   //  Libérer les 2 plaques et prendre les suivantes
                         if (numLine > 0)
                             numLine = numLine - 1;    //  Faute de plaques pour cette ligne, on revient à la ligne précédente
                         else isEnd = true;
@@ -316,11 +316,11 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    private boolean changeTile1And2(boolean firstAvailable) {   //  Libérer les 2 plaques et prendre les 2 suivantes. Pour la ligne numLine, tilesInitCount-numLine+2 plaques sont disponibles sur un total de tilesInitCount+numLine plaques
+    private boolean changeTile1And2(boolean firstAvailable) {   //  Libérer les 2 plaques et prendre les suivantes. Pour la ligne numLine, tilesInitCount-numLine+2 plaques sont disponibles sur un total de tilesInitCount+numLine plaques
         int numTile1 = -1;
         if (!firstAvailable) {
             numTile1 = lines[numLine].opNumTiles[OP_NUM_TILE1_INDEX];
-            tiles[numTile1].used = false;    //  Libérer les 2 plaques actuelles
+            tiles[numTile1].used = false;    //  Libérer les 2 plaques
             tiles[lines[numLine].opNumTiles[OP_NUM_TILE2_INDEX]].used = false;
         }
         int numNextTile1 = getNextAvailableTileNumber(numTile1);       //  1e plaque suivante : Si numTile1 = -1 => Vérifier toutes les plaques (à partir de 0), sinon après la 1e plaque actuelle
@@ -402,17 +402,17 @@ public class MainActivity extends Activity {
         if (Math.abs(result - targetValue) < diff) {     //  Résultat plus proche de la cible
             diff = Math.abs(result - targetValue);
             if (diff == 0) isExact = true;          //  Solution exacte trouvée !
-            minLineCount = numLine;
+            minLineCount = numLine + 1;
             solutions.clear();                      //  Effacer toutes les solutions précédentes
             isGood = true;
         } else {  //  Résultat identique ou plus écarté de la cible
             if (Math.abs(result - targetValue) == diff) {   //  Résultat identique
-                if (numLine < minLineCount) {          //  Nombre de lignes plus petit
-                    minLineCount = numLine;
+                if ((numLine + 1) < minLineCount) {          //  Nombre de lignes plus petit
+                    minLineCount = numLine + 1;
                     solutions.clear();                      //  Effacer toutes les solutions précédentes
                     isGood = true;
                 } else {   //  Nombre de lignes identique ou plus grand
-                    if (numLine == minLineCount)
+                    if ((numLine + 1) == minLineCount)
                         isGood = true;      //  Nombre de lignes identique
                 }
             }
