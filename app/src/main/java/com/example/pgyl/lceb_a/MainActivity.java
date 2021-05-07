@@ -82,21 +82,20 @@ enum Operators {   //  Opérateurs entre 2 plaques
     }
 }
 
-class Tile {            // Plaque
-    int value;          // Valeur de la plaque
-    boolean used;       // True => Plaque n'est plus disponible
+class Tile {   // Plaque
+    int value = 0;          // Valeur de la plaque
+    boolean used = false;   // True => Plaque n'est plus disponible
 }
 
-class Line {             // Ligne de résultat intermédiaire
-    int numTile1;        //   1e plaque
-    int numTile2;        //   2e plaque
-    Operators operator;
-    boolean ordered;     //  True si (numTile1 operator numTile2), False si (numTile2 operator numTile1)
+class Line {   // Ligne de résultat intermédiaire
+    int[] opNumTiles = new int[2];   //  Les numéros de plaques utilisés pour l'opération de la ligne
+    Operators operator = Operators.BEGIN;
+    boolean ordered = true;         //  True si (tile1 op tile2), False si (tile2 op tile1)
 }
 
-class Solution {       // Solution (exacte ou rapprochée)
-    String publishedText;  //  "5 - 3 = 2£2 * 6 = 12£"   Texte de solution prêt pour la publication (Toutes les lignes et résultats, en clair)
-    String shortText;      //  "*(2,6)12£-(2,5)3£"       Texte court de solution trié par ligne pour vérifier si est bien différent des précédents, en commençant par la plus petite plaque au sein de chaque ligne
+class Solution {   // Solution (exacte ou rapprochée)
+    String publishedText = "";  //  "5 - 3 = 2£2 * 6 = 12£"   Texte de solution prêt pour la publication (Toutes les lignes et résultats, en clair)
+    String shortText = "";      //  "*(2,6)12£-(2,5)3£"       Texte court de solution trié par ligne pour vérifier si est bien différent des précédents, en commençant par la plus petite plaque au sein de chaque ligne
     int addOpCount = 0;
     int subOpCount = 0;
     int mulOpCount = 0;
@@ -108,7 +107,7 @@ public class MainActivity extends Activity {
     private Button[] btnTiles; // Boutons de plaque
     private int tilesInitCount;       //  Nombre de plaques initial
     private Tile[] tiles;             //  Plaques initiales et intermédiaires
-    private Line[] lines;             //  Lignes de résultat intermédiaire
+    private Line[] lines;             //  Lignes de résultat intermédiaire.  A la ligne i correspond la plaque de résultat i+tilesInitCount
     private final List<Solution> solutions = new ArrayList<Solution>();   //  Solutions (exactes ou rapprochées) validées
     private String[] shortTexts;       //  Sert au tri par ligne d'une solution proposée (cf type TypeSolution)
     int numLine;          //  N° de ligne de résultat intermédiaire actuelle
@@ -127,6 +126,9 @@ public class MainActivity extends Activity {
     private Menu menu;
     private SolutionLinesListItemAdapter solutionLinesListItemAdapter;
     private final String SEPARATOR = "£";
+    private final int OP_NUM_TILE1_INDEX = 0;
+    private final int OP_NUM_TILE2_INDEX = 1;
+    private final int NOT_AVAILABLE = -1000;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -178,15 +180,18 @@ public class MainActivity extends Activity {
     }
 
     private void inits() {
-        tiles = new Tile[2 * tilesInitCount];     //  => OK 1..2*tilesInitCount-1  (cad tilesInitCount plaques initiales + (tilesInitCount-1) plaques de résultat intermédiaire
-        for (int i = 1; i <= (tiles.length - 1); i = i + 1) {   //  Instanciation de chaque élément
-            tiles[i] = new Tile();
+        lines = new Line[tilesInitCount - 1];
+        for (int i = 1; i <= lines.length; i = i + 1) {
+            lines[i - 1] = new Line();
+            for (int j = 1; j <= lines[i - 1].opNumTiles.length; j = j + 1) {
+                lines[i - 1].opNumTiles[j - 1] = 0;
+            }
         }
-        lines = new Line[tilesInitCount];         //  => OK 1..tilesInitCount-1
-        for (int i = 1; i <= (lines.length - 1); i = i + 1) {
-            lines[i] = new Line();
+        tiles = new Tile[tilesInitCount + lines.length];  //  tilesInitCount plaques initiales + (tilesInitCount-1) plaques de résultat intermédiaire
+        for (int i = 1; i <= tiles.length; i = i + 1) {   //  Instanciation de chaque élément
+            tiles[i - 1] = new Tile();
         }
-        shortTexts = new String[tilesInitCount];  //  => OK 1..tilesInitCount-1   Sert au tri par ligne d'une solution proposée
+        shortTexts = new String[lines.length];  //  Sert au tri par ligne d'une solution proposée
     }
 
     @Override
@@ -235,8 +240,8 @@ public class MainActivity extends Activity {
 
         invalidateSolutionDisplay();
         boolean[] reservedIndexes = new boolean[tileValues.length];
-        for (int i = 1; i <= reservedIndexes.length - 1; i = i + 1) {
-            reservedIndexes[i] = false;  //  Toutes les 28 plaques sont disponibles au tirage
+        for (int i = 1; i <= reservedIndexes.length; i = i + 1) {
+            reservedIndexes[i - 1] = false;  //  Toutes les 28 plaques sont disponibles au tirage
         }
         int index = 0;
         for (int i = 1; i <= tilesInitCount; i = i + 1) {  // Remplissage des plaques
@@ -257,7 +262,7 @@ public class MainActivity extends Activity {
         diff = 99999999;
         minLineCount = 99999999;
         opCount = 0;
-        numLine = 1;
+        numLine = 0;
         isExact = false;
         isEnd = false;
         isNewLine = true;
@@ -269,13 +274,13 @@ public class MainActivity extends Activity {
         while (!isEnd) {
             if (isNewLine) {
                 isNewLine = false;
-                setFirstTile1And2();   //  Prendre les 2 premières plaques disponibles
+                changeTile1And2(true);   //  Prendre les 2 premières plaques disponibles
             }
             int result = getResultFromNextOperator();
             if (lines[numLine].operator.equals(Operators.END)) {   //  Il n'y a plus d'opérateurs disponibles
-                if (!setNextTile2()) {   //  Essayer la plaque suivant la 2e plaque actuelle
-                    if (!setNextTile1And2()) {   //  Essayer les 2 plaques suivant les 2 plaques actuelles
-                        if (numLine > 1)
+                if (!changeTile2()) {   //  Libérer la 2e plaque et essayer la suivante
+                    if (!changeTile1And2(false)) {   //  Libérer les 2 plaques et essayer les suivantes
+                        if (numLine > 0)
                             numLine = numLine - 1;    //  Faute de plaques pour cette ligne, on revient à la ligne précédente
                         else isEnd = true;
                     }
@@ -290,7 +295,7 @@ public class MainActivity extends Activity {
                 if (isUnique(solution))              //  Les solutions précédentes sont différentes => La proposition de solution est validée
                     solutions.add(solution);
             }
-            if (numLine < (tilesInitCount - 1)) {    //  Une nouvelle ligne est possible
+            if (numLine < (lines.length - 1)) {    //  Une nouvelle ligne est possible
                 numLine = numLine + 1;    //  Nouvelle ligne de résultat intermédiaire
                 isNewLine = true;
             }
@@ -298,63 +303,58 @@ public class MainActivity extends Activity {
         publishSolutions();   // Publier toutes les solutions exactes ou (à défaut) rapprochées validées
     }
 
+    private boolean changeTile2() {    //  Libérer la 2e plaque et prendre la suivante
+        int numTile2 = lines[numLine].opNumTiles[OP_NUM_TILE2_INDEX];
+        tiles[numTile2].used = false;   //  Libérer la 2e plaque
+        int numNextTile2 = getNextAvailableTileNumber(numTile2);   //  2e plaque suivante
+        if (numNextTile2 != NOT_AVAILABLE) {
+            tiles[numNextTile2].used = true;   //  Réserver la 2e plaque
+            lines[numLine].opNumTiles[OP_NUM_TILE2_INDEX] = numNextTile2;
+            lines[numLine].operator = Operators.BEGIN;
+            return true;
+        }
+        return false;
+    }
 
-    int bookNextFreeTileNumber(int numTile) {   // Sélectionner la 1e plaque disponible après le n° d'ordre numTile
-        int nextFreeTileNumber = 0;   // Retourner 0 si aucune plaque disponible
+    private boolean changeTile1And2(boolean firstAvailable) {   //  Libérer les 2 plaques et prendre les 2 suivantes. Pour la ligne numLine, tilesInitCount-numLine+2 plaques sont disponibles sur un total de tilesInitCount+numLine plaques
+        int numTile1 = -1;
+        if (!firstAvailable) {
+            numTile1 = lines[numLine].opNumTiles[OP_NUM_TILE1_INDEX];
+            tiles[numTile1].used = false;    //  Libérer les 2 plaques actuelles
+            tiles[lines[numLine].opNumTiles[OP_NUM_TILE2_INDEX]].used = false;
+        }
+        int numNextTile1 = getNextAvailableTileNumber(numTile1);       //  1e plaque suivante : Si numTile1 = -1 => Vérifier toutes les plaques (à partir de 0), sinon après la 1e plaque actuelle
+        if (numNextTile1 != NOT_AVAILABLE) {
+            int numNextTile2 = getNextAvailableTileNumber(numNextTile1);   //  2e plaque, suivant la 1e
+            if (numNextTile2 != NOT_AVAILABLE) {
+                tiles[numNextTile1].used = true;   //  Réserver les 2 plaques
+                lines[numLine].opNumTiles[OP_NUM_TILE1_INDEX] = numNextTile1;
+                tiles[numNextTile2].used = true;
+                lines[numLine].opNumTiles[OP_NUM_TILE2_INDEX] = numNextTile2;
+                lines[numLine].operator = Operators.BEGIN;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    int getNextAvailableTileNumber(int numTile) {   // Trouver la 1e plaque disponible après numTile
+        int numNextTile = NOT_AVAILABLE;   // Retourner -1000 si aucune plaque disponible
         int i = numTile;
-        while (i < (tilesInitCount + numLine - 1)) {   // Pour la ligne numLine, les plaques à vérifier vont de 1 à tilesInitCount+numLine-1
+        while (i < (tilesInitCount + numLine - 1)) {   // Pour la ligne numLine, les plaques à vérifier vont de minimum 0 à maximum tilesInitCount+numLine-1
             i = i + 1;
             if (!tiles[i].used) {
-                tiles[i].used = true;   // Sélectionner la plaque si disponible
-                nextFreeTileNumber = i;
+                numNextTile = i;
                 break;
             }
         }
-        return nextFreeTileNumber;
-    }
-
-    int bookFirstFreeTileNumber() {   // Sélectionner la 1ère plaque disponible
-        return bookNextFreeTileNumber(0);   //  cad le 1er n° disponible après le n° 0
-    }
-
-    private void setFirstTile1And2() {    //  Pour la ligne numLine (1..tilesInitCount-1), tilesInitCount-numLine+1 plaques sont disponibles sur un total de tilesInitCount+numLine-1 plaques
-        lines[numLine].numTile1 = bookFirstFreeTileNumber();   // Prendre les 2 premières plaques disponibles (il y en a toujours au moins 2)
-        lines[numLine].numTile2 = bookNextFreeTileNumber(lines[numLine].numTile1);  //  La 2e plaque doit toujours suivre la 1e
-        lines[numLine].operator = Operators.BEGIN;
-    }
-
-    private boolean setNextTile2() {
-        boolean getNextTile2 = false;
-        int numTile2 = lines[numLine].numTile2;
-        tiles[numTile2].used = false;   //  La 2e plaque actuelle redevient disponible
-        numTile2 = bookNextFreeTileNumber(numTile2);
-        if (numTile2 != 0) {   // OK, on l'essaye en gardant la même 1e plaque
-            lines[numLine].numTile2 = numTile2;
-            lines[numLine].operator = Operators.BEGIN;
-            getNextTile2 = true;
-        }
-        return getNextTile2;
-    }
-
-    private boolean setNextTile1And2() {
-        boolean getNextTile1And2 = false;
-        tiles[lines[numLine].numTile1].used = false;   //  Les 2 plaques actuelles redeviennent disponibles
-        tiles[lines[numLine].numTile2].used = false;
-        int numTile1 = bookNextFreeTileNumber(lines[numLine].numTile1);
-        int numTile2 = bookNextFreeTileNumber(numTile1);
-        if ((numTile1 != 0) && (numTile2 != 0)) {   // OK, on les essaye
-            lines[numLine].numTile1 = numTile1;
-            lines[numLine].numTile2 = numTile2;
-            lines[numLine].operator = Operators.BEGIN;
-            getNextTile1And2 = true;
-        }
-        return getNextTile1And2;
+        return numNextTile;
     }
 
     private int getResultFromNextOperator() {
         int result = 0;
-        int valTile1 = tiles[lines[numLine].numTile1].value;
-        int valTile2 = tiles[lines[numLine].numTile2].value;
+        int valTile1 = tiles[lines[numLine].opNumTiles[OP_NUM_TILE1_INDEX]].value;
+        int valTile2 = tiles[lines[numLine].opNumTiles[OP_NUM_TILE2_INDEX]].value;
         lines[numLine].ordered = true;
         Operators operator = lines[numLine].operator.getNext();  //  2 plaques sont prêtes, passer à l'opérateur suivant
         switch (operator) {
@@ -412,7 +412,8 @@ public class MainActivity extends Activity {
                     solutions.clear();                      //  Effacer toutes les solutions précédentes
                     isGood = true;
                 } else {   //  Nombre de lignes identique ou plus grand
-                    if (numLine == minLineCount) isGood = true;      //  Nombre de lignes identique
+                    if (numLine == minLineCount)
+                        isGood = true;      //  Nombre de lignes identique
                 }
             }
         }
@@ -422,10 +423,10 @@ public class MainActivity extends Activity {
     private Solution getSolution() {
         Solution solution = new Solution();
         String publishedText = "";
-        for (int i = 1; i <= numLine; i = i + 1) {    //  Construire tout le texte de la proposition de solution
+        for (int i = 0; i <= numLine; i = i + 1) {    //  Construire tout le texte de la proposition de solution
             Operators operator = lines[i].operator;
-            int valTile1 = tiles[lines[i].numTile1].value;
-            int valTile2 = tiles[lines[i].numTile2].value;
+            int valTile1 = tiles[lines[i].opNumTiles[OP_NUM_TILE1_INDEX]].value;
+            int valTile2 = tiles[lines[i].opNumTiles[OP_NUM_TILE2_INDEX]].value;
             int result = tiles[tilesInitCount + i].value;
             if (!lines[i].ordered) {   //  Inverser les plaques
                 int temp = valTile1;
@@ -448,9 +449,9 @@ public class MainActivity extends Activity {
             if (operator.equals(Operators.DIV))
                 solution.divOpCount = solution.divOpCount + 1;
         }
-        java.util.Arrays.sort(shortTexts, 1, numLine);  // Trier la solution (codée) par ligne d'opération
+        java.util.Arrays.sort(shortTexts, 0, numLine);  // Trier la solution (codée) par ligne d'opération
         String shortText = "";
-        for (int i = 1; i <= numLine; i = i + 1) {   // Texte trié de la proposition de solution codée
+        for (int i = 0; i <= numLine; i = i + 1) {   // Texte trié de la proposition de solution codée
             shortText = shortText + shortTexts[i];
         }
         solution.publishedText = publishedText;
@@ -514,14 +515,14 @@ public class MainActivity extends Activity {
 
     private void saveDBTileAndTargetValues() {
         for (int i = 1; i <= tilesInitCount; i = i + 1) {
-            saveDBTileValueRow(stringDB, tileValueToTileValueRow(tiles[i].value, i));
+            saveDBTileValueRow(stringDB, tileValueToTileValueRow(tiles[i - 1].value, i));
         }
         saveDBTargetValueRow(stringDB, targetValueToTargetValueRow(targetValue));
     }
 
     private void getDBTileAndTargetValues() {
         for (int i = 1; i <= tilesInitCount; i = i + 1) {
-            tiles[i].value = tileValueRowToTileValue(getDBTileValueRow(stringDB, i));
+            tiles[i - 1].value = tileValueRowToTileValue(getDBTileValueRow(stringDB, i));
         }
         targetValue = targetValueRowToTargetValue(getDBTargetValueRow(stringDB));
     }
@@ -562,9 +563,9 @@ public class MainActivity extends Activity {
     private void updateTileValuesWithTileTexts() {
         for (int i = 1; i <= tilesInitCount; i = i + 1) {
             try {
-                tiles[i].value = Integer.parseInt(btnTiles[i - 1].getText().toString());    // Valeur de la plaque
-                tiles[i].used = false;    //  Disponible
-                btnTiles[i - 1].setText(String.valueOf(tiles[i].value));    //  Normalisé
+                tiles[i - 1].value = Integer.parseInt(btnTiles[i - 1].getText().toString());    // Valeur de la plaque
+                tiles[i - 1].used = false;    //  Disponible
+                btnTiles[i - 1].setText(String.valueOf(tiles[i - 1].value));    //  Normalisé
             } catch (NumberFormatException ex) {   // KO
                 msgBox("ERROR: Invalid Tile value " + i, this);
             }
@@ -582,7 +583,7 @@ public class MainActivity extends Activity {
 
     private void updateTileTextsWithTileValues() {
         for (int i = 1; i <= tilesInitCount; i = i + 1) {
-            btnTiles[i - 1].setText(String.valueOf(tiles[i].value));
+            btnTiles[i - 1].setText(String.valueOf(tiles[i - 1].value));
         }
     }
 
