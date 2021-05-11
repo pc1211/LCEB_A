@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -104,20 +103,21 @@ class Solution {   // Solution (exacte ou rapprochée)
 
 public class MainActivity extends Activity {
     private Button btnTarget;
-    private Button[] btnTiles; // Boutons de plaque
+    private Button[] btnTiles;        //  Boutons de plaque
     private int tilesInitCount;       //  Nombre de plaques initial
     private Tile[] tiles;             //  Plaques initiales et intermédiaires
     private Line[] lines;             //  Lignes de résultat intermédiaire.  A la ligne i correspond la plaque de résultat i+tilesInitCount
-    private final List<Solution> solutions = new ArrayList<Solution>();   //  Solutions (exactes ou rapprochées) validées
+    private final ArrayList<Solution> solutions = new ArrayList<Solution>();   //  Solutions (exactes ou rapprochées) validées
+    private final ArrayList<String> solutionLines = new ArrayList<String>();   //  L'ensemble des lignes de résultats à afficher de toutes les solutions (exactes ou rapprochées) validées
     private String[] shortTexts;       //  Sert au tri par ligne d'une solution proposée (cf type TypeSolution)
     int numLine;          //  N° de ligne de résultat intermédiaire actuelle
-    int targetValue;           //  Cible à atteindre
+    int targetValue;      //  Cible à atteindre
     int diff;             //  Ecart par rapport à la cible à égaler ou réduire
     int minLineCount;     //  Nombre de lignes des solutions actuelles, à égaler ou réduire
     int opCount;          //  Nombre total d'opérations
     boolean isExact;      //  True => Il y a au moins une solution exacte
     boolean isEnd;        //  True => C'est la fin des calculs, faute de plaques disponibles
-    boolean isNewLine;    //  Une nouvelle ligne commence
+    boolean isNewLine;    //  True => Une nouvelle ligne commence
 
     private boolean validReturnFromCalledActivity;
     private String calledActivityName;
@@ -236,7 +236,7 @@ public class MainActivity extends Activity {
     }
 
     private void onBtnRandomTilesClick() {
-        int[] tileValues = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 25, 50, 50, 75, 75, 100, 100};  // Distribution des 28 plaques disponibles au départ
+        int[] tileValues = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 75, 100};  // Distribution des plaques disponibles au départ
 
         invalidateSolutionDisplay();
         boolean[] reservedIndexes = new boolean[tileValues.length];
@@ -492,7 +492,6 @@ public class MainActivity extends Activity {
 
     private void publishSolutions() {
         sortSolutions();
-        ArrayList<String> solutionLines = new ArrayList<String>();
         solutionLines.clear();
         solutionLines.add(solutions.size() + (isExact ? "" : " nearly") + " exact solution" + (solutions.size() > 1 ? "s" : "") + " in " + minLineCount + " line" + (minLineCount > 1 ? "s" : "") + " (optimum)");
         solutionLines.add("after " + opCount + " operation" + (opCount > 1 ? "s" : ""));

@@ -1,4 +1,4 @@
-package com.example.pgyl.swtimer_a;
+package com.example.pgyl.lceb_a;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;

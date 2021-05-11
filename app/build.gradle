@@ -2,24 +2,25 @@ import java.text.SimpleDateFormat
 
 apply plugin: 'com.android.application'
 
-def vnStamp() {
+static def vnStamp() {
     def df = new SimpleDateFormat("dd/MM/yyyy@HH:mm:ss")
     def c = Calendar.getInstance()
     return df.format(c.getTime())
 }
 
-def vcStamp() {
+static def vcStamp() {
     def df = new SimpleDateFormat("yyDDDHHmm")
     def c = Calendar.getInstance()
     return Integer.valueOf(df.format(c.getTime()))
 }
 
 android {
-    compileSdkVersion 28
-    buildToolsVersion '29.0.2'
+    compileSdkVersion 30
+    buildToolsVersion '30.0.2'
     defaultConfig {
         applicationId "com.example.pgyl.lceb_a"
         minSdkVersion 23
+        //noinspection ExpiredTargetSdkVersion
         targetSdkVersion 26
         versionCode vcStamp()
         versionName vnStamp()
