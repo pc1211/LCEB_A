@@ -83,7 +83,7 @@ enum Operators {   //  Opérateurs entre 2 plaques
 
 class Tile {   // Plaque
     int value;          // Valeur de la plaque
-    boolean used;   // True => Plaque n'est plus disponible
+    boolean used;       // True => La plaque n'est plus disponible
 }
 
 class Line {   // Ligne de résultat intermédiaire
@@ -99,7 +99,7 @@ class Solution {   // Solution (exacte ou rapprochée)
     int subOpCount;
     int mulOpCount;
     int divOpCount;
-    int result;
+    int result;   //  Meilleur résultat obtenu
 }
 
 public class MainActivity extends Activity {
@@ -482,7 +482,7 @@ public class MainActivity extends Activity {
         if (isUnique) solutions.add(solution);
     }
 
-    private void sortSolutions() {  //  Trier par addOpCount ASC, subOpCount ASC, mulOpCount ASC, divOpCount ASC
+    private void sortSolutions() {  //  Trier par result ASC, addOpCount ASC, subOpCount ASC, mulOpCount ASC, divOpCount ASC
         if (solutions.size() >= 2) {
             Collections.sort(solutions, new Comparator<Solution>() {
                 public int compare(Solution solution1, Solution solution2) {
@@ -515,7 +515,7 @@ public class MainActivity extends Activity {
             if (sol.result != result) {   //  C'est une solution rapprochée
                 result = sol.result;
                 results.add("******************************");
-                results.add("Best result:  " + result);
+                results.add("****** Best result:  " + result + " ******");
             }
             results.add("********* " + sol.addOpCount + "+ " + sol.subOpCount + "- " + sol.mulOpCount + "* " + sol.divOpCount + "/ " + "*********");
             results.addAll(Arrays.asList(sol.publishedText.split(SEPARATOR)));
@@ -642,6 +642,7 @@ public class MainActivity extends Activity {
 
     private void setupResultsTextListView() {
         resultsTextListView = findViewById(R.id.TLV_RESULTS);
+        resultsTextListView.init();
     }
 
     private void setupTileButtons() {
