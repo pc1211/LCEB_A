@@ -118,8 +118,8 @@
         android:layout_marginBottom="6dp"
         android:orientation="horizontal">
 
-        <ListView
-            android:id="@+id/LV_SOLUTION_LINES"
+        <com.example.pgyl.pekislib_a.TextListView
+            android:id="@+id/TLV_RESULTS"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="#FFFFFF"
