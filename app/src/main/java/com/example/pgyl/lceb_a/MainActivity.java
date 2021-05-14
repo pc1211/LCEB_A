@@ -81,6 +81,10 @@ enum Operators {   //  Opérateurs entre 2 plaques
     }
 }
 
+enum TileSearchType {   //  Type de recherche de plaques disponibles
+    FIRST_AVAILABLE, NEXT_AVAILABLE
+}
+
 class Tile {   // Plaque
     int value;          // Valeur de la plaque
     boolean used;       // True => La plaque n'est plus disponible
@@ -106,7 +110,7 @@ public class MainActivity extends Activity {
     private Button btnTarget;
     private Button btnFindSolutions;
     private Button[] btnTiles;        //  Boutons de plaque
-    private TextListView resultsTextListView;
+    private TextListView tlvResults;
     private int tilesInitCount;       //  Nombre de plaques initial
     private Tile[] tiles;             //  Plaques initiales et intermédiaires
     private Line[] lines;             //  Lignes de résultat intermédiaire.  A la ligne i correspond la plaque de résultat i+tilesInitCount
@@ -153,8 +157,8 @@ public class MainActivity extends Activity {
         updateTileValuesWithTileTexts();
         updateTargetValueWithTargetText();
         saveDBTileAndTargetValues();
-        resultsTextListView.close();
-        resultsTextListView = null;
+        tlvResults.close();
+        tlvResults = null;
         stringDB.close();
         stringDB = null;
         btnTiles = null;
@@ -270,11 +274,11 @@ public class MainActivity extends Activity {
         while (!isEnd) {
             if (isNewLine) {
                 isNewLine = false;
-                getNextTile1And2(true);   //  Prendre les 2 premières plaques disponibles
+                getTile1And2(TileSearchType.FIRST_AVAILABLE);   //  Prendre les 2 premières plaques disponibles
             }
             if (!getNextOperatorAndResult()) {   //  Obtenir si possible le prochain opérateur et son résultat
-                if (!getNextTile2()) {           //  Libérer si possible la 2e plaque et prendre la suivante
-                    if (!getNextTile1And2(false)) {   //  Libérer si possible les 2 plaques et prendre les suivantes
+                if (!getTile2(TileSearchType.NEXT_AVAILABLE)) {           //  Libérer la 2e plaque et si possible prendre la suivante
+                    if (!getTile1And2(TileSearchType.NEXT_AVAILABLE)) {   //  Libérer les 2 plaques et si possible prendre les suivantes
                         if (numLine > 0)
                             numLine = numLine - 1;    //  Faute de plaques pour cette ligne, on revient à la ligne précédente
                         else isEnd = true;
@@ -283,7 +287,7 @@ public class MainActivity extends Activity {
                 continue;   // Reprendre à while(!isEnd)
             }
             formNewTileFromResult();
-            if (goodResult())
+            if (foundSolution())
                 addUniqueSolution(buildSolution());   //  Si les solutions précédentes sont différentes => La proposition de solution est validée
             if (numLine < (lines.length - 1)) {     //  Une nouvelle ligne est possible
                 numLine = numLine + 1;    //  Nouvelle ligne de résultat intermédiaire
@@ -309,9 +313,13 @@ public class MainActivity extends Activity {
         opCount = opCount + 1;
     }
 
-    private boolean getNextTile2() {    //  Libérer la 2e plaque et prendre la suivante
+    private boolean getTile2(TileSearchType tileSearchType) {    //  Libérer la 2e plaque et prendre la suivante
         int numTile2 = lines[numLine].opNumTiles[OP_NUM_TILE2_INDEX];
-        tiles[numTile2].used = false;   //  Libérer la 2e plaque
+        if (tileSearchType.equals(TileSearchType.NEXT_AVAILABLE)) {
+            tiles[numTile2].used = false;   //  Libérer la 2e plaque
+        } else {   //  tileSearchType=FIRST_AVAILABLE
+            numTile2 = -1;
+        }
         int numNextTile2 = getNextAvailableTileNumber(numTile2);   //  2e plaque suivante
         if (numNextTile2 != NOT_AVAILABLE) {
             tiles[numNextTile2].used = true;   //  Réserver la 2e plaque
@@ -322,20 +330,22 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    private boolean getNextTile1And2(boolean firstAvailable) {   //  Libérer les 2 plaques et prendre les suivantes. Pour la ligne numLine, tilesInitCount-numLine+2 plaques sont disponibles sur un total de tilesInitCount+numLine plaques
-        int numTile1 = -1;
-        if (!firstAvailable) {
-            numTile1 = lines[numLine].opNumTiles[OP_NUM_TILE1_INDEX];
+    private boolean getTile1And2(TileSearchType tileSearchType) {   //  Libérer les 2 plaques (si tileSearchType=NEXT_AVAILABLE) et prendre les suivantes. Pour la ligne numLine, tilesInitCount-numLine+2 plaques sont disponibles sur un total de tilesInitCount+numLine plaques
+        int numTile1 = lines[numLine].opNumTiles[OP_NUM_TILE1_INDEX];
+        int numTile2 = lines[numLine].opNumTiles[OP_NUM_TILE2_INDEX];
+        if (tileSearchType.equals(TileSearchType.NEXT_AVAILABLE)) {
             tiles[numTile1].used = false;    //  Libérer les 2 plaques
-            tiles[lines[numLine].opNumTiles[OP_NUM_TILE2_INDEX]].used = false;
+            tiles[numTile2].used = false;
+        } else {   //  tileSearchType=FIRST_AVAILABLE
+            numTile1 = -1;
         }
         int numNextTile1 = getNextAvailableTileNumber(numTile1);       //  1e plaque suivante : Si numTile1 = -1 => Vérifier toutes les plaques (à partir de 0), sinon après la 1e plaque actuelle
         if (numNextTile1 != NOT_AVAILABLE) {
             int numNextTile2 = getNextAvailableTileNumber(numNextTile1);   //  2e plaque, suivant la 1e
             if (numNextTile2 != NOT_AVAILABLE) {
                 tiles[numNextTile1].used = true;   //  Réserver les 2 plaques
-                lines[numLine].opNumTiles[OP_NUM_TILE1_INDEX] = numNextTile1;
                 tiles[numNextTile2].used = true;
+                lines[numLine].opNumTiles[OP_NUM_TILE1_INDEX] = numNextTile1;
                 lines[numLine].opNumTiles[OP_NUM_TILE2_INDEX] = numNextTile2;
                 lines[numLine].operator = Operators.BEGIN;
                 return true;
@@ -404,27 +414,27 @@ public class MainActivity extends Activity {
         return getNextOperatorAndResult;
     }
 
-    private boolean goodResult() {
-        boolean goodResult = false;
+    private boolean foundSolution() {
+        boolean foundSolution = false;
         if (Math.abs(result - targetValue) < diff) {     //  Résultat plus proche de la cible
             diff = Math.abs(result - targetValue);
             if (diff == 0) isExact = true;          //  Solution exacte trouvée !
             minLineCount = numLine + 1;
             solutions.clear();                      //  Effacer toutes les solutions précédentes
-            goodResult = true;
+            foundSolution = true;
         } else {  //  Résultat identique ou plus écarté de la cible
             if (Math.abs(result - targetValue) == diff) {   //  Résultat identique
                 if ((numLine + 1) < minLineCount) {          //  Nombre de lignes plus petit
                     minLineCount = numLine + 1;
                     solutions.clear();                      //  Effacer toutes les solutions précédentes
-                    goodResult = true;
+                    foundSolution = true;
                 } else {   //  Nombre de lignes identique ou plus grand
                     if ((numLine + 1) == minLineCount)
-                        goodResult = true;      //  Nombre de lignes identique
+                        foundSolution = true;      //  Nombre de lignes identique
                 }
             }
         }
-        return goodResult;
+        return foundSolution;
     }
 
     private Solution buildSolution() {
@@ -520,13 +530,13 @@ public class MainActivity extends Activity {
             results.add("********* " + sol.addOpCount + "+ " + sol.subOpCount + "- " + sol.mulOpCount + "* " + sol.divOpCount + "/ " + "*********");
             results.addAll(Arrays.asList(sol.publishedText.split(SEPARATOR)));
         }
-        resultsTextListView.setItems(results);
+        tlvResults.setItems(results);
         btnFindSolutions.getBackground().setColorFilter(isExact ? Color.GREEN : Color.RED, PorterDuff.Mode.MULTIPLY);
         btnFindSolutions.invalidate();
     }
 
     private void invalidateResultsDisplay() {
-        resultsTextListView.removeAllItems();   // Vider l'affichage de toutes les lignes de toutes les solutions exactes ou approchées
+        tlvResults.removeAllItems();   // Vider l'affichage de toutes les lignes de toutes les solutions exactes ou approchées
         btnFindSolutions.getBackground().clearColorFilter();
         btnFindSolutions.invalidate();
     }
@@ -641,8 +651,8 @@ public class MainActivity extends Activity {
     }
 
     private void setupResultsTextListView() {
-        resultsTextListView = findViewById(R.id.TLV_RESULTS);
-        resultsTextListView.init();
+        tlvResults = findViewById(R.id.TLV_RESULTS);
+        tlvResults.init();
     }
 
     private void setupTileButtons() {
