@@ -22,7 +22,6 @@ import com.example.pgyl.pekislib_a.TextListView;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -64,7 +63,7 @@ import static com.example.pgyl.pekislib_a.StringDBUtils.setStartStatusOfActivity
 // S'il n'y a plus de ligne précédente, c'est fini !
 
 enum Operators {   //  Opérateurs entre 2 plaques
-    BEGIN("b"), ADD("+"), SUB("-"), MUL("*"), DIV("/"), END("e");
+    BEGIN("b"), ADD("+"), SUB("-"), MUL("x"), DIV("/"), END("e");
 
     private final String operatorText;
 
@@ -96,15 +95,35 @@ class Line {   // Ligne de résultat intermédiaire
     boolean ordered;         //  True si (tile1 op tile2), False si (tile2 op tile1)
 }
 
-class Solution {   // Solution (exacte ou rapprochée)
+class Solution implements Comparable {   // Solution (exacte ou rapprochée)
     String publishedText;  //  "5 - 3 = 2£2 * 6 = 12£"   Texte de solution prêt pour la publication (Toutes les lignes et résultats, en clair)
     String shortText;      //  "*(2,6)12£-(2,5)3£"       Texte court de solution trié par ligne pour vérifier si est bien différent des précédents, en commençant par la plus petite plaque au sein de chaque ligne
+    int result;            //  Meilleur résultat obtenu
     int addOpCount;
     int subOpCount;
     int mulOpCount;
     int divOpCount;
-    int result;   //  Meilleur résultat obtenu
+
+    @Override
+    public int compareTo(Object o) {   //  Pour comparer 2 solutions entre elles; result ASC, addOpCount ASC, subOpCount ASC, mulOpCount ASC, divOpCount ASC
+        Solution solution2 = (Solution) o;
+        int res = Integer.compare(result, solution2.result);
+        if (res == 0) {
+            res = Integer.compare(addOpCount, solution2.addOpCount);
+            if (res == 0) {
+                res = Integer.compare(subOpCount, solution2.subOpCount);
+                if (res == 0) {
+                    res = Integer.compare(mulOpCount, solution2.mulOpCount);
+                    if (res == 0) {
+                        res = Integer.compare(divOpCount, solution2.divOpCount);
+                    }
+                }
+            }
+        }
+        return res;
+    }
 }
+
 
 public class MainActivity extends Activity {
     private Button btnTarget;
@@ -117,6 +136,7 @@ public class MainActivity extends Activity {
     private final ArrayList<Solution> solutions = new ArrayList<Solution>();   //  Solutions (exactes ou rapprochées) validées
     private final ArrayList<String> results = new ArrayList<String>();   //  L'ensemble des lignes de résultats à afficher de toutes les solutions (exactes ou rapprochées) validées
     private String[] shortTexts;       //  Sert au tri par ligne d'une solution proposée (cf type Solution)
+
     int numLine;          //  N° de ligne de résultat intermédiaire actuelle
     int targetValue;      //  Cible à atteindre
     int diff;             //  Ecart (en valeur absolue) par rapport à la cible, à égaler ou réduire
@@ -492,42 +512,19 @@ public class MainActivity extends Activity {
         if (isUnique) solutions.add(solution);
     }
 
-    private void sortSolutions() {  //  Trier par result ASC, addOpCount ASC, subOpCount ASC, mulOpCount ASC, divOpCount ASC
-        if (solutions.size() >= 2) {
-            Collections.sort(solutions, new Comparator<Solution>() {
-                public int compare(Solution solution1, Solution solution2) {
-                    int res = Integer.compare(solution1.result, solution2.result);
-                    if (res == 0) {
-                        res = Integer.compare(solution1.addOpCount, solution2.addOpCount);
-                        if (res == 0) {
-                            res = Integer.compare(solution1.subOpCount, solution2.subOpCount);
-                            if (res == 0) {
-                                res = Integer.compare(solution1.mulOpCount, solution2.mulOpCount);
-                                if (res == 0) {
-                                    res = Integer.compare(solution1.divOpCount, solution2.divOpCount);
-                                }
-                            }
-                        }
-                    }
-                    return res;
-                }
-            });
-        }
-    }
-
     private void publishResults() {
-        sortSolutions();
+        Collections.sort(solutions);
         results.clear();
         results.add(solutions.size() + (isExact ? "" : " nearly") + " exact solution" + (solutions.size() > 1 ? "s" : "") + " in " + minLineCount + " line" + (minLineCount > 1 ? "s" : "") + " (optimum)");
         results.add("after " + opCount + " operation" + (opCount > 1 ? "s" : ""));
-        int result = targetValue;
+        Solution refSol = new Solution();
         for (Solution sol : solutions) {
-            if (sol.result != result) {   //  C'est une solution rapprochée
-                result = sol.result;
-                results.add("******************************");
-                results.add("****** Best result:  " + result + " ******");
+            String s = "***";
+            if (sol.compareTo(refSol) != 0) {   //  sol a d'autres caractéristiques (result,addOpCount,subOpCount,mulOpCount,divOpCount) que refSol => Afficher ses caractéristiques
+                refSol = sol;
+                s = s + "****** " + sol.addOpCount + Operators.ADD.TEXT() + " " + sol.subOpCount + Operators.SUB.TEXT() + " " + sol.mulOpCount + Operators.MUL.TEXT() + " " + sol.divOpCount + Operators.DIV.TEXT() + " " + "********" + (isExact ? "" : " " + sol.result + " ");
             }
-            results.add("********* " + sol.addOpCount + "+ " + sol.subOpCount + "- " + sol.mulOpCount + "* " + sol.divOpCount + "/ " + "*********");
+            results.add(s);
             results.addAll(Arrays.asList(sol.publishedText.split(SEPARATOR)));
         }
         tlvResults.setItems(results);
